@@ -1,4 +1,5 @@
 
+
 // src/app/dashboard/users/page.tsx
 'use client';
 
@@ -42,6 +43,7 @@ import {
   UpdateUserData,
   UserProfile,
   UserStatus,
+  authenticateUserWithPseudoHash // Keep this import if still used for login
 } from '@/lib/firebase/firestore/users'; // Import Firestore functions and types
 
 // Define a type for the user data stored in localStorage
@@ -304,9 +306,10 @@ export default function UsersPage() {
           description: `El usuario "${newUser.nombre}" ha sido agregado.`,
         });
       }
-      form.reset(); // Reset form fields
+      // Reset form to default values after BOTH add and update succeed
+      form.reset();
       await loadUsers(); // Reload the list
-      setEditingUser(null); // Exit editing mode
+      setEditingUser(null); // Exit editing mode / Clear editing state
     } catch (err) {
       console.error('Error al agregar/actualizar usuario:', err);
       toast({
@@ -602,3 +605,4 @@ export default function UsersPage() {
     </>
   );
 }
+
