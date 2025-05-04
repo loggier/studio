@@ -158,7 +158,7 @@ export default function BrandsPage() {
                     </FormItem>
                   )}
                 />
-                 <div className="flex gap-2 justify-start"> {/* Use flex and gap */}
+                 <div className="flex gap-2 justify-start"> {/* Use flex, gap, and justify-start */}
                     <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid}>
                       {editingBrand ? (
                           <>
