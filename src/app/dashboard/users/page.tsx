@@ -262,14 +262,13 @@ export default function UsersPage() {
         };
 
         // --- Handle Optional Password Update ---
-        // WARNING: Sending plain text password - see note in firestore/users.ts
         if (data.password && data.password.length >= 6) {
-             updateData.password = data.password;
-            console.warn("SECURITY RISK: Sending plain text password for update. Implement server-side hashing.");
+             updateData.password = data.password; // Pass the plain text password to the update function
+            console.warn("Sending password for update. The `updateUser` function should handle hashing.");
             toast({
                 variant: "warning",
-                title: "Contraseña Actualizada (Inseguro)",
-                description: "La contraseña se actualizó, pero se envió sin encriptar.",
+                title: "Actualizando Contraseña",
+                description: "Se intentará actualizar la contraseña (debe ser hasheada en el backend).",
             });
          } else if (data.password && data.password.length > 0) {
              // Don't submit if password is provided but invalid (schema should prevent this, but double-check)
@@ -287,7 +286,7 @@ export default function UsersPage() {
 
       } else {
         // --- Add new user ---
-        // WARNING: Storing plain text password - see note in firestore/users.ts
+        // Pass plain text password to addUser, which should handle hashing
         const newUserData: NewUserData = {
           nombre: data.nombre,
           correo: data.correo,
@@ -297,7 +296,7 @@ export default function UsersPage() {
           telefono: data.telefono?.trim() || undefined,
           status: data.status as UserStatus,
         };
-         console.warn("SECURITY RISK: Storing plain text password for new user. Implement server-side hashing.");
+         console.warn("Sending plain text password for new user. The `addUser` function MUST handle hashing securely.");
         const newUser = await addUser(newUserData); // Use Firestore add
         toast({
           title: 'Usuario Agregado',
@@ -399,11 +398,9 @@ export default function UsersPage() {
                           Mínimo 6 caracteres.
                           {editingUser && " Solo si deseas actualizarla."}
                         </p>
-                         {!editingUser && ( // Only show warning when adding
-                            <p className="text-xs text-destructive mt-1">
-                                ¡Importante! La contraseña se guarda sin encriptar en este ejemplo. Implementar hashing seguro en el servidor.
-                            </p>
-                          )}
+                         <p className="text-xs text-destructive mt-1">
+                            ¡Importante! La contraseña se "hashea" de forma insegura en este ejemplo. Implementar hashing seguro en el servidor (Firebase Auth, bcrypt, Argon2).
+                         </p>
                         <FormMessage /> {/* Shows validation errors */}
                       </FormItem>
                     )}
