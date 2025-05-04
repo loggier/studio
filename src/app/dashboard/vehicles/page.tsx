@@ -1,3 +1,4 @@
+// src/app/dashboard/vehicles/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,7 +12,8 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// Badge might not be needed if status is removed from display
+// import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button'; // Import Button
 import { Skeleton } from '@/components/ui/skeleton';
 import { Edit, Trash2 } from 'lucide-react'; // Import icons
@@ -89,7 +91,7 @@ export default function VehiclesPage() {
       await deleteVehicle(vehicleToDelete.id);
       toast({
         title: "Vehículo Eliminado",
-        description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.plate || vehicleToDelete.vin}) ha sido eliminado.`,
+        description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.modelId}) ha sido eliminado.`, // Adjusted message
       });
       await loadData(); // Refresh the list
     } catch (err) {
@@ -113,9 +115,6 @@ export default function VehiclesPage() {
   }, [loadData]);
 
 
-  // Status badge function removed as status column is removed
-  // const getStatusBadgeVariant = (status: Vehicle['status']) => { ... };
-
   return (
     <>
       <Card>
@@ -132,7 +131,7 @@ export default function VehiclesPage() {
                 {/* Updated Table Headers based on user request */}
                 <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
-                <TableHead>Model ID</TableHead>
+                <TableHead>ID Modelo</TableHead> {/* Changed from Model ID */}
                 <TableHead>Año</TableHead>
                 <TableHead>Color(es)</TableHead>
                 <TableHead>Corte Corriente</TableHead>
@@ -146,46 +145,55 @@ export default function VehiclesPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={`skel-${index}`}>
-                    {/* Adjusted Skeletons for new columns */}
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                    <TableCell><Skeleton className="h-10 w-16 rounded" /></TableCell>
+                    {/* Adjusted Skeletons for new columns - 10 total now */}
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell> {/* Brand */}
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell> {/* Model */}
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Model ID */}
+                    <TableCell><Skeleton className="h-4 w-12" /></TableCell> {/* Year */}
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell> {/* Colors */}
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Corte */}
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Ubicacion */}
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell> {/* Observation */}
+                    <TableCell><Skeleton className="h-10 w-16 rounded" /></TableCell> {/* Images */}
                     <TableCell className="text-right space-x-1">
                        <Skeleton className="h-8 w-8 inline-block rounded"/>
                        <Skeleton className="h-8 w-8 inline-block rounded"/>
-                    </TableCell>
+                    </TableCell> {/* Actions */}
                   </TableRow>
                 ))
               ) : vehicles.length > 0 ? (
                 vehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
                     {/* Updated Table Cells to display correct data */}
-                    <TableCell>{vehicle.brand || 'N/A'}</TableCell>
-                    <TableCell>{vehicle.model || 'N/A'}</TableCell>
-                    <TableCell className="font-mono text-xs">{vehicle.modelId || 'N/A'}</TableCell>
-                    <TableCell>{vehicle.year || 'N/A'}</TableCell>
-                    <TableCell>{vehicle.colors || 'N/A'}</TableCell>
-                    <TableCell>{vehicle.corte || 'N/A'}</TableCell>
-                    <TableCell>{vehicle.ubicacion || 'N/A'}</TableCell>
-                    <TableCell className="text-xs max-w-xs truncate">{vehicle.observation || 'N/A'}</TableCell> {/* Added truncation */}
+                    <TableCell>{vehicle.brand ?? 'N/A'}</TableCell>
+                    <TableCell>{vehicle.model ?? 'N/A'}</TableCell>
+                    <TableCell className="font-mono text-xs">{vehicle.modelId ?? 'N/A'}</TableCell>
+                    <TableCell>{vehicle.year ?? 'N/A'}</TableCell>
+                    <TableCell>{vehicle.colors ?? 'N/A'}</TableCell>
+                    <TableCell>{vehicle.corte ?? 'N/A'}</TableCell>
+                    <TableCell>{vehicle.ubicacion ?? 'N/A'}</TableCell>
+                    {/* Added max-w-xs and truncate for long observations */}
+                    <TableCell className="text-xs max-w-xs truncate">{vehicle.observation ?? 'N/A'}</TableCell>
                     <TableCell>
                         {vehicle.imageUrls && vehicle.imageUrls.length > 0 ? (
                          <div className="flex space-x-1 items-center">
+                           {/* Use next/image */}
                            <Image
                              src={vehicle.imageUrls[0]}
                              alt={`Imagen de ${vehicle.brand} ${vehicle.model}`}
-                             width={40}
-                             height={30}
+                             width={40} // Adjust size as needed
+                             height={30} // Adjust size as needed
                              className="rounded object-cover"
-                             unoptimized // Assuming hostname might not be configured
-                             onError={(e) => e.currentTarget.style.display = 'none'}
+                             // Consider adding unoptimized if hostnames aren't configured in next.config.js
+                             // unoptimized
+                             // Add error handling for broken image links
+                             onError={(e) => {
+                                 const target = e.target as HTMLImageElement;
+                                 target.style.display = 'none'; // Hide broken image icon
+                                 // Optionally display a placeholder
+                             }}
                            />
+                           {/* Display count of additional images */}
                            {vehicle.imageUrls.length > 1 && (
                              <span className="text-xs text-muted-foreground self-center ml-1">
                                +{vehicle.imageUrls.length - 1} más
@@ -193,7 +201,7 @@ export default function VehiclesPage() {
                            )}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">N/A</span>
+                          <span className="text-xs text-muted-foreground">N/A</span> // Display N/A if no images
                         )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
@@ -214,7 +222,7 @@ export default function VehiclesPage() {
                 ))
               ) : (
                 <TableRow>
-                  {/* Adjusted colSpan to match the new number of columns */}
+                  {/* Adjusted colSpan to match the new number of columns (10) */}
                   <TableCell colSpan={10} className="h-24 text-center">
                     No se encontraron vehículos.
                   </TableCell>
@@ -232,7 +240,7 @@ export default function VehiclesPage() {
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo
-              <strong> {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.plate || vehicleToDelete?.vin})</strong>.
+              <strong> {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.modelId})</strong>. {/* Adjusted message */}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
