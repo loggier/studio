@@ -28,7 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger // Removed as it's not needed for manual control
 } from "@/components/ui/alert-dialog";
 import { fetchBrands, addBrand, deleteBrand, updateBrand, Brand } from '@/lib/firebase/firestore/brands';
 
@@ -91,7 +91,7 @@ export default function BrandsPage() {
         return;
     }
     setBrandToDelete({ id: brandId, name: brandName });
-    setIsDeleteDialogOpen(true);
+    setIsDeleteDialogOpen(true); // Manually open the dialog
   };
 
   // Performs the actual deletion after confirmation
@@ -253,18 +253,16 @@ export default function BrandsPage() {
                            <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)} aria-label={`Editar ${brand.name}`}>
                               <Edit className="h-4 w-4" />
                            </Button>
-                           {/* Use AlertDialogTrigger */}
-                           <AlertDialogTrigger asChild>
-                             <Button
-                               variant="ghost"
-                               size="icon"
-                               className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
-                               onClick={() => handleDeleteClick(brand.id, brand.name)}
-                               aria-label={`Eliminar ${brand.name}`}
-                             >
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                           </AlertDialogTrigger>
+                           {/* Removed AlertDialogTrigger, Button now directly opens the dialog via state */}
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
+                             onClick={() => handleDeleteClick(brand.id, brand.name)}
+                             aria-label={`Eliminar ${brand.name}`}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -282,7 +280,7 @@ export default function BrandsPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog - Controlled by state */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -290,6 +288,7 @@ export default function BrandsPage() {
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Esto eliminará permanentemente la marca
               <strong> "{brandToDelete?.name}"</strong>.
+               {/* Consider adding implications like deleting associated models */}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
