@@ -13,7 +13,7 @@ import {
   getDoc,
   writeBatch, // Import writeBatch if needed for complex operations
   where // Import where for model fetching by brand
-} from 'firebase/firestore';
+} from 'firebase/firestore'; // Import where for model fetching by brand
 import { db } from '@/lib/firebase/config';
 import type { Brand } from './brands';
 import type { Model } from './models';
@@ -23,18 +23,13 @@ export interface Vehicle {
   id: string; // Firestore document ID
   brand: string; // Store brand name directly
   model: string; // Store model name directly
-  modelId: string; // Reference to the Model document ID
   year: number; // Stored as number
   colors: string; // Field name as requested
   corte?: string; // Optional field
   imageUrls?: string[]; // Optional array of strings
   observation?: string; // Optional field
   ubicacion?: string; // Optional field
-  // Removed vin, plate, status from the primary interface as they are not in the user's list
-  // Keep status internally if needed for logic, but don't rely on it from fetch
-  status?: 'Active' | 'Inactive' | 'Maintenance'; // Example internal status
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
+  modelId: string
 }
 
 // Define the structure for adding a new vehicle (Not used based on requirements, but good practice)
@@ -63,8 +58,7 @@ const vehiclesCollectionRef = collection(db, 'vehicles');
  */
 export async function fetchVehicles(): Promise<Vehicle[]> {
   try {
-    // Order by a relevant field, e.g., createdAt or year
-    const q = query(vehiclesCollectionRef, orderBy('createdAt', 'desc'));
+    const q = query(vehiclesCollectionRef);
     const querySnapshot = await getDocs(q);
 
     const vehicles = querySnapshot.docs.map(doc => {
@@ -87,7 +81,7 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
         }
       } else if (data.year != null) { // Check for non-null but invalid types
          console.warn(`Invalid year type for vehicle ${doc.id}:`, typeof data.year);
-      }
+       }
 
 
       // ImageUrls: Expect array of strings, default to empty array
@@ -106,9 +100,7 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
         imageUrls: imageUrls, // Use validated array
         observation: typeof data.observation === 'string' ? data.observation : undefined,
         ubicacion: typeof data.ubicacion === 'string' ? data.ubicacion : undefined,
-        // Optional Firestore timestamps
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : undefined,
+        modelId: typeof data.modelId === 'string' ? data.modelId : '',
       } satisfies Vehicle; // Use 'satisfies' for type checking without casting
     });
 
@@ -132,7 +124,7 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
 export async function updateVehicle(vehicleId: string, updateData: UpdateVehicleData): Promise<void> {
     try {
         const vehicleDocRef = doc(db, 'vehicles', vehicleId);
-        const dataToUpdate: any = { updatedAt: serverTimestamp() };
+        const dataToUpdate: any = {};
 
         // Map provided updateData fields to the Firestore document structure
         // Ensure correct types and handle nulls for clearing fields
@@ -219,30 +211,4 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
     console.error('Error deleting vehicle: ', error);
     throw new Error('Failed to delete vehicle from Firestore.');
   }
-}
-
-// Fetch models filtered by brand for the edit form
-/**
- * Fetches models associated with a specific brand ID for select dropdowns.
- * @param brandId - The ID of the brand to filter models by.
- * @returns A promise that resolves to an array of minimal Model objects (id, name).
- */
-export async function fetchModelsForSelectByBrand(brandId: string): Promise<Pick<Model, 'id' | 'name'>[]> {
-    if (!brandId) return []; // Return empty if no brand is selected
-    try {
-        const q = query(
-            collection(db, 'models'),
-            where('brandId', '==', brandId),
-            orderBy('name')
-        );
-        const querySnapshot = await getDocs(q);
-        const models = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            name: doc.data().name as string,
-        }));
-        return models;
-    } catch (error) {
-        console.error(`Error fetching models for brand ${brandId}: `, error);
-        throw new Error('Failed to fetch models for the selected brand.');
-    }
 }

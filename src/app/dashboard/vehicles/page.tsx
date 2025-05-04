@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image'; // Import next/image
 import {
   Table,
   TableHeader,
@@ -12,12 +11,10 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-// Badge might not be needed if status is removed from display
-// import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button'; // Import Button
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2 } from 'lucide-react'; // Import icons
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { Edit, Trash2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,21 +24,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Import AlertDialog components
-import { VehicleEditDialog } from '@/components/vehicle-edit-dialog'; // Import the edit dialog
+} from '@/components/ui/alert-dialog';
+import { VehicleEditDialog } from '@/components/vehicle-edit-dialog';
 import {
-    fetchVehicles,
-    deleteVehicle,
-    updateVehicle,
-    Vehicle,
-    UpdateVehicleData
-} from '@/lib/firebase/firestore/vehicles'; // Import Firestore functions
-import { fetchBrandsForSelect } from '@/lib/firebase/firestore/models'; // Import function to fetch brands
+  fetchVehicles,
+  deleteVehicle,
+  updateVehicle,
+  Vehicle,
+  UpdateVehicleData,
+} from '@/lib/firebase/firestore/vehicles';
+import { fetchBrandsForSelect } from '@/lib/firebase/firestore/models';
 import type { Brand } from '@/lib/firebase/firestore/brands';
 
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
-  const [brands, setBrands] = React.useState<Pick<Brand, 'id' | 'name'>[]>([]); // State for brands
+  const [brands, setBrands] = React.useState<Pick<Brand, 'id' | 'name'>[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -56,14 +53,20 @@ export default function VehiclesPage() {
       setError(null);
       const [vehiclesData, brandsData] = await Promise.all([
         fetchVehicles(),
-        fetchBrandsForSelect() // Fetch brands for the edit dialog
+        fetchBrandsForSelect(),
       ]);
-      setVehicles(vehiclesData);
-      setBrands(brandsData);
+        setVehicles(vehiclesData);
+        console.log(vehiclesData)
+        setBrands(brandsData);
+        console.log(brandsData)
     } catch (err) {
       console.error('Failed to fetch data:', err);
       setError('No se pudieron cargar los datos. Inténtalo de nuevo más tarde.');
-       toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar los vehículos o marcas." });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudieron cargar los vehículos o marcas.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +75,6 @@ export default function VehiclesPage() {
   React.useEffect(() => {
     loadData();
   }, [loadData]);
-
 
   const handleEditClick = (vehicle: Vehicle) => {
     setVehicleToEdit(vehicle);
@@ -90,16 +92,16 @@ export default function VehiclesPage() {
     try {
       await deleteVehicle(vehicleToDelete.id);
       toast({
-        title: "Vehículo Eliminado",
-        description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.modelId}) ha sido eliminado.`, // Adjusted message
+        title: 'Vehículo Eliminado',
+        description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.modelId}) ha sido eliminado.`,
       });
-      await loadData(); // Refresh the list
+      await loadData();
     } catch (err) {
-      console.error("Error al eliminar vehículo:", err);
+      console.error('Error al eliminar vehículo:', err);
       toast({
-        variant: "destructive",
-        title: "Error al Eliminar",
-        description: err instanceof Error ? err.message : "No se pudo eliminar el vehículo.",
+        variant: 'destructive',
+        title: 'Error al Eliminar',
+        description: err instanceof Error ? err.message : 'No se pudo eliminar el vehículo.',
       });
     } finally {
       setIsDeleteDialogOpen(false);
@@ -107,13 +109,14 @@ export default function VehiclesPage() {
     }
   }, [vehicleToDelete, toast, loadData]);
 
-  const handleUpdateVehicle = React.useCallback(async (vehicleId: string, data: UpdateVehicleData): Promise<void> => {
-      // The updateVehicle function from firestore/vehicles.ts handles the actual Firestore update
+  const handleUpdateVehicle = React.useCallback(
+    async (vehicleId: string, data: UpdateVehicleData): Promise<void> => {
       await updateVehicle(vehicleId, data);
-      await loadData(); // Refresh data after successful update
-      // Toast is handled within the dialog upon successful submission
-  }, [loadData]);
-
+      await loadData();
+    },
+    [loadData]
+  );
+  console.log(vehicles)
 
   return (
     <>
@@ -121,19 +124,18 @@ export default function VehiclesPage() {
         <CardHeader>
           <CardTitle>Registro de Vehículos</CardTitle>
           <CardDescription>Lista de todos los vehículos en el sistema.</CardDescription>
-          {/* Add Button Removed as per requirement */}
         </CardHeader>
         <CardContent>
-          {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
+          {error && !isLoading && (
+            <p className="text-destructive mb-4">{error}</p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
-                {/* Updated Table Headers based on user request */}
                 <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
-                <TableHead>ID Modelo</TableHead> {/* Changed from Model ID */}
                 <TableHead>Año</TableHead>
-                <TableHead>Color(es)</TableHead>
+                 <TableHead>Color(es)</TableHead>
                 <TableHead>Corte Corriente</TableHead>
                 <TableHead>Ubicación Corte</TableHead>
                 <TableHead>Observaciones</TableHead>
@@ -142,70 +144,53 @@ export default function VehiclesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={`skel-${index}`}>
-                    {/* Adjusted Skeletons for new columns - 10 total now */}
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell> {/* Brand */}
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell> {/* Model */}
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Model ID */}
-                    <TableCell><Skeleton className="h-4 w-12" /></TableCell> {/* Year */}
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell> {/* Colors */}
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Corte */}
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell> {/* Ubicacion */}
-                    <TableCell><Skeleton className="h-4 w-36" /></TableCell> {/* Observation */}
-                    <TableCell><Skeleton className="h-10 w-16 rounded" /></TableCell> {/* Images */}
-                    <TableCell className="text-right space-x-1">
-                       <Skeleton className="h-8 w-8 inline-block rounded"/>
-                       <Skeleton className="h-8 w-8 inline-block rounded"/>
-                    </TableCell> {/* Actions */}
-                  </TableRow>
-                ))
-              ) : vehicles.length > 0 ? (
+              {vehicles.length > 0 ? (
                 vehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
-                    {/* Updated Table Cells to display correct data */}
                     <TableCell>{vehicle.brand ?? 'N/A'}</TableCell>
                     <TableCell>{vehicle.model ?? 'N/A'}</TableCell>
-                    <TableCell className="font-mono text-xs">{vehicle.modelId ?? 'N/A'}</TableCell>
                     <TableCell>{vehicle.year ?? 'N/A'}</TableCell>
                     <TableCell>{vehicle.colors ?? 'N/A'}</TableCell>
                     <TableCell>{vehicle.corte ?? 'N/A'}</TableCell>
                     <TableCell>{vehicle.ubicacion ?? 'N/A'}</TableCell>
-                    {/* Added max-w-xs and truncate for long observations */}
-                    <TableCell className="text-xs max-w-xs truncate">{vehicle.observation ?? 'N/A'}</TableCell>
+                    <TableCell className="text-xs max-w-xs truncate">
+                      {vehicle.observation ?? 'N/A'}
+                      {/* Display N/A if no observation */}
+                    </TableCell>
                     <TableCell>
-                        {vehicle.imageUrls && vehicle.imageUrls.length > 0 ? (
-                         <div className="flex space-x-1 items-center">
-                           {/* Use next/image */}
-                           <Image
-                             src={vehicle.imageUrls[0]}
-                             alt={`Imagen de ${vehicle.brand} ${vehicle.model}`}
-                             width={40} // Adjust size as needed
-                             height={30} // Adjust size as needed
-                             className="rounded object-cover"
-                             // Consider adding unoptimized if hostnames aren't configured in next.config.js
-                             // unoptimized
-                             // Add error handling for broken image links
-                             onError={(e) => {
-                                 const target = e.target as HTMLImageElement;
-                                 target.style.display = 'none'; // Hide broken image icon
-                                 // Optionally display a placeholder
-                             }}
-                           />
-                           {/* Display count of additional images */}
-                           {vehicle.imageUrls.length > 1 && (
-                             <span className="text-xs text-muted-foreground self-center ml-1">
-                               +{vehicle.imageUrls.length - 1} más
-                             </span>
-                           )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">N/A</span> // Display N/A if no images
-                        )}
+                      {vehicle.imageUrls && vehicle.imageUrls.length > 0 ? (
+                        <div className="flex space-x-1 items-center">
+                          <img
+                            src={vehicle.imageUrls[0]}
+                            alt={`Imagen de ${vehicle.brand} ${vehicle.model}`}
+                            width={40}
+                            height={30}
+                            className="rounded object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                          {vehicle.imageUrls.length > 1 && (
+                            <span className="text-xs text-muted-foreground self-center ml-1">
+                              +{vehicle.imageUrls.length - 1} más
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-xs text-muted-foreground">N/A</span>
+                          {/* Display N/A if no images */}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(vehicle)} aria-label={`Editar ${vehicle.brand} ${vehicle.model}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditClick(vehicle)}
+                        aria-label={`Editar ${vehicle.brand} ${vehicle.model}`}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -222,8 +207,7 @@ export default function VehiclesPage() {
                 ))
               ) : (
                 <TableRow>
-                  {/* Adjusted colSpan to match the new number of columns (10) */}
-                  <TableCell colSpan={10} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No se encontraron vehículos.
                   </TableCell>
                 </TableRow>
@@ -234,31 +218,39 @@ export default function VehiclesPage() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo
-              <strong> {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.modelId})</strong>. {/* Adjusted message */}
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo{' '}
+              <strong>
+                {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.modelId})
+              </strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setVehicleToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Continuar</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setVehicleToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Continuar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-       {/* Edit Vehicle Dialog */}
-       <VehicleEditDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          vehicle={vehicleToEdit}
-          brands={brands} // Pass fetched brands
-          // Models are fetched dynamically inside the dialog based on brand selection
-          onUpdate={handleUpdateVehicle}
-       />
+      {/* Edit Vehicle Dialog */}
+      <VehicleEditDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        vehicle={vehicleToEdit}
+        brands={brands}
+        onUpdate={handleUpdateVehicle}
+      />
     </>
   );
 }

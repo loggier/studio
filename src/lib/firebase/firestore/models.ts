@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   Timestamp, // Use Timestamp for type definitions
   getDoc, // Import getDoc to fetch a single document
+  DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import type { Brand } from './brands'; // Import Brand type for linking
@@ -92,13 +93,42 @@ export async function fetchBrandsForSelect(): Promise<Pick<Brand, 'id' | 'name'>
       id: doc.id,
       name: doc.data().name as string, // Ensure name is treated as string
     }));
+
     return brands;
   } catch (error) {
     console.error('Error fetching brands for select: ', error);
     throw new Error('Failed to fetch brands for select dropdown.');
   }
 }
+/**
+ * Fetches models for a specific brand from Firestore.
+ * @param brandId - The ID of the brand to fetch models for.
+ * @returns A promise that resolves to an array of Model objects.
+ */
+export async function fetchModelsForSelectByBrand(brandId: string): Promise<Pick<Model, 'id' | 'name'>[]> {
+  try {
+    if (!brandId) {
+      throw new Error("Brand ID is required to fetch models.");
+    }
 
+    const q = query(
+      collection(db, 'models'),
+      where('brandId', '==', brandId),
+      orderBy('name')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const models = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      name: doc.data().name as string, // Ensure name is treated as string
+    }));
+
+    return models;
+  } catch (error) {
+    console.error('Error fetching models for select by brand: ', error);
+    throw new Error(`Failed to fetch models for the specified brand: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
 /**
  * Adds a new model to the Firestore 'models' collection.

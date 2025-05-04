@@ -79,7 +79,7 @@ export default function DashboardLayout({
         <SidebarHeader className="items-center justify-between p-4">
            <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-lg text-primary">
              <Car className="h-6 w-6" />
-             <span className="group-data-[collapsible=icon]:hidden">VehicleVault</span>
+             <span className="group-data-[collapsible=icon]:hidden">Admin</span>
            </Link>
            {!isMobile && <SidebarTrigger />}
          </SidebarHeader>
@@ -89,7 +89,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={router.pathname === '/dashboard/vehicles'}>
                 <Link href="/dashboard/vehicles">
                   <Car />
-                  <span>Vehicles</span>
+                  <span>Vehículos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -97,7 +97,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={router.pathname === '/dashboard/brands'}>
                 <Link href="/dashboard/brands">
                   <Factory />
-                  <span>Brands</span>
+                  <span>Marcas</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -105,7 +105,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={router.pathname === '/dashboard/models'}>
                 <Link href="/dashboard/models">
                   <Tag />
-                  <span>Models</span>
+                  <span>Modelos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -113,7 +113,7 @@ export default function DashboardLayout({
               <SidebarMenuButton asChild isActive={router.pathname === '/dashboard/users'}>
                 <Link href="/dashboard/users">
                   <Users />
-                  <span>Users</span>
+                  <span>Usuarios</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

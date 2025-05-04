@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'VehicleVault Lite',
-  description: 'Vehicle Management Dashboard',
+  title: 'Admin Cortes',
+  description: 'Registro de ubicaciones de corte de motor',
 };
 
 export default function RootLayout({
