@@ -20,7 +20,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, Edit, XCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, XCircle, KeyRound } from 'lucide-react'; // Added KeyRound
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,24 +43,34 @@ import {
   UserStatus,
 } from '@/lib/firebase/firestore/users'; // Import Firestore functions and types
 
+// Define a type for the user data stored in localStorage
+interface StoredUser {
+    id: string;
+    nombre: string;
+    correo: string;
+    perfil: string;
+}
+
 // Zod schema for user form validation
-// Password validation is only strictly required for adding users
-// When editing, password field is not shown/required in this form
+// Password validation is optional when editing, but if provided, must meet length requirement
 const userSchema = z.object({
   id: z.string().optional(), // ID is present when editing
   nombre: z.string().min(3, { message: 'Nombre debe tener al menos 3 caracteres' }).max(50, { message: 'Nombre demasiado largo' }),
   correo: z.string().email({ message: 'Correo electrónico inválido' }),
-  // Password required only when NOT editing (i.e., adding a new user)
+  // Password required only when adding a new user (id is absent)
+  // Optional when editing (id is present), but validated if provided
   password: z.string().optional(),
   empresa: z.string().max(50, { message: 'Empresa demasiado largo' }).optional().nullable(),
   perfil: z.enum(['admin', 'tecnico'], { required_error: 'Perfil es obligatorio' }),
   telefono: z.string().max(20, { message: 'Teléfono demasiado largo' }).optional().nullable(),
   status: z.enum(['activo', 'inactivo'], { required_error: 'Estado es obligatorio' }),
-}).refine(data => data.id || data.password, { // Password is required if id is not present (i.e., adding)
-  message: "Contraseña es obligatoria al crear usuario",
-  path: ["password"], // Show error on password field
-}).refine(data => !data.id || !data.password || data.password.length >= 6, { // If password is provided (optional on edit for validation trigger), check length
-    message: "Contraseña debe tener al menos 6 caracteres",
+}).refine(data => data.id || (data.password && data.password.length >= 6), {
+  // Password is required and must be >= 6 chars if adding (no id)
+  message: "Contraseña es obligatoria (mínimo 6 caracteres) al crear usuario",
+  path: ["password"],
+}).refine(data => !data.id || !data.password || data.password.length >= 6, {
+    // If editing (id exists) and password is provided, it must be >= 6 chars
+    message: "La nueva contraseña debe tener al menos 6 caracteres",
     path: ["password"],
 });
 
@@ -75,7 +85,26 @@ export default function UsersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [userToDelete, setUserToDelete] = React.useState<{ id: string; nombre: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false); // Track submission state
+  const [loggedInUser, setLoggedInUser] = React.useState<StoredUser | null>(null); // State for logged-in user
   const { toast } = useToast();
+
+  // Get logged-in user info on component mount
+  React.useEffect(() => {
+    const storedUserString = localStorage.getItem('user');
+    if (storedUserString) {
+        try {
+            const storedUser: StoredUser = JSON.parse(storedUserString);
+            // Basic validation
+             if (storedUser && storedUser.id && storedUser.nombre && storedUser.correo && storedUser.perfil) {
+                 setLoggedInUser(storedUser);
+             } else {
+                 console.error("Invalid logged-in user data structure in localStorage");
+             }
+        } catch (e) {
+            console.error("Failed to parse logged-in user from localStorage", e);
+        }
+    }
+  }, []);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -92,6 +121,31 @@ export default function UsersPage() {
   });
 
   const loadUsers = React.useCallback(async () => {
+    // Prevent non-admins from even fetching users
+    const storedUserString = localStorage.getItem('user');
+     if (storedUserString) {
+         try {
+            const currentUser: StoredUser = JSON.parse(storedUserString);
+            if (currentUser.perfil !== 'admin') {
+                setError('Acceso denegado. Solo administradores pueden ver esta sección.');
+                setIsLoading(false);
+                setUsers([]); // Clear any potentially loaded users
+                return; // Stop execution
+            }
+         } catch (e) {
+             console.error("Failed to parse user for permission check", e);
+             setError('Error al verificar permisos.');
+             setIsLoading(false);
+             return; // Stop execution
+         }
+     } else {
+         // Handle case where user somehow gets here without being logged in
+         setError('No autorizado.');
+         setIsLoading(false);
+         return;
+     }
+
+
     try {
       setIsLoading(true);
       setError(null);
@@ -104,7 +158,7 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast]); // Dependencies: toast
 
   React.useEffect(() => {
     loadUsers();
@@ -122,7 +176,7 @@ export default function UsersPage() {
       id: user.id,
       nombre: user.nombre,
       correo: user.correo,
-      password: '', // Clear password field when editing
+      password: '', // Clear password field initially when editing
       empresa: user.empresa || '',
       perfil: user.perfil,
       telefono: user.telefono || '',
@@ -136,20 +190,18 @@ export default function UsersPage() {
         console.error("Error: userId or userName is missing for delete click.");
         return;
     }
-    // Basic check: prevent deleting the 'admin' user if it's hardcoded or identified some other way
-    // In a real app, this logic might be more complex (e.g., checking if it's the last admin)
-     // Also check against currently logged-in user (if implemented)
-    // const currentUserData = localStorage.getItem('user'); // Assuming user info is stored
-    // const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
-    // if (currentUser && currentUser.username === userName) { // Replace 'username' with actual field if different
-    //      toast({
-    //          variant: "destructive",
-    //          title: "Acción Denegada",
-    //          description: "No puedes eliminar tu propia cuenta de usuario.",
-    //      });
-    //      return;
-    // }
-    // Example: Prevent deleting a user named 'admin' (adjust if needed)
+
+    // --- Prevent self-deletion ---
+    if (loggedInUser && loggedInUser.id === userId) {
+         toast({
+             variant: "destructive",
+             title: "Acción Denegada",
+             description: "No puedes eliminar tu propia cuenta de usuario.",
+         });
+         return; // Stop the deletion process
+    }
+
+    // Prevent deleting the 'admin' user (example safeguard)
      if (userName.toLowerCase() === 'admin') {
         toast({
              variant: "warning",
@@ -158,7 +210,6 @@ export default function UsersPage() {
          });
          return;
      }
-
 
     setUserToDelete({ id: userId, nombre: userName });
     setIsDeleteDialogOpen(true);
@@ -198,33 +249,55 @@ export default function UsersPage() {
     setIsSubmitting(true);
     try {
       if (editingUser) {
-        // Update existing user
+        // --- Update existing user ---
         const updateData: UpdateUserData = {
+          // Required fields are always sent from form state
           nombre: data.nombre,
           correo: data.correo,
-          empresa: data.empresa || undefined, // Send undefined if empty
           perfil: data.perfil as UserProfile,
-          telefono: data.telefono || undefined, // Send undefined if empty
           status: data.status as UserStatus,
-          // Password updates are handled separately for security
+          // Optional fields: send undefined if empty/null to avoid overwriting with empty strings unless intended
+          empresa: data.empresa?.trim() || undefined,
+          telefono: data.telefono?.trim() || undefined,
         };
+
+        // --- Handle Optional Password Update ---
+        // WARNING: Sending plain text password - see note in firestore/users.ts
+        if (data.password && data.password.length >= 6) {
+             updateData.password = data.password;
+            console.warn("SECURITY RISK: Sending plain text password for update. Implement server-side hashing.");
+            toast({
+                variant: "warning",
+                title: "Contraseña Actualizada (Inseguro)",
+                description: "La contraseña se actualizó, pero se envió sin encriptar.",
+            });
+         } else if (data.password && data.password.length > 0) {
+             // Don't submit if password is provided but invalid (schema should prevent this, but double-check)
+             toast({ variant: "destructive", title: "Error", description: "La contraseña proporcionada no es válida." });
+             setIsSubmitting(false);
+             return;
+         }
+         // If password field is empty, updateData.password remains undefined, and Firestore won't update it.
+
         await updateUser(editingUser.id, updateData);
         toast({
           title: 'Usuario Actualizado',
           description: `El usuario "${data.nombre}" ha sido actualizado.`,
         });
+
       } else {
-        // Add new user
+        // --- Add new user ---
         // WARNING: Storing plain text password - see note in firestore/users.ts
         const newUserData: NewUserData = {
           nombre: data.nombre,
           correo: data.correo,
           password: data.password!, // Password is required by schema here
-          empresa: data.empresa || undefined,
+          empresa: data.empresa?.trim() || undefined,
           perfil: data.perfil as UserProfile,
-          telefono: data.telefono || undefined,
+          telefono: data.telefono?.trim() || undefined,
           status: data.status as UserStatus,
         };
+         console.warn("SECURITY RISK: Storing plain text password for new user. Implement server-side hashing.");
         const newUser = await addUser(newUserData); // Use Firestore add
         toast({
           title: 'Usuario Agregado',
@@ -247,6 +320,21 @@ export default function UsersPage() {
   };
 
 
+  // --- Conditional Rendering for Non-Admins ---
+  if (error === 'Acceso denegado. Solo administradores pueden ver esta sección.') {
+      return (
+          <div className="flex items-center justify-center h-full">
+              <Card className="w-full max-w-md">
+                  <CardHeader>
+                      <CardTitle>Acceso Denegado</CardTitle>
+                      <CardDescription>{error}</CardDescription>
+                  </CardHeader>
+              </Card>
+          </div>
+      );
+  }
+  // --- End Conditional Rendering ---
+
   return (
     <>
       <div className="grid gap-6 md:grid-cols-3">
@@ -256,7 +344,7 @@ export default function UsersPage() {
             <CardHeader>
               <CardTitle>{editingUser ? 'Editar Usuario' : 'Agregar Nuevo Usuario'}</CardTitle>
               <CardDescription>
-                {editingUser ? `Modifica los datos del usuario "${editingUser.nombre}".` : 'Crea una nueva cuenta de usuario.'}
+                {editingUser ? `Modifica los datos de "${editingUser.nombre}".` : 'Crea una nueva cuenta de usuario.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -288,24 +376,39 @@ export default function UsersPage() {
                       </FormItem>
                     )}
                   />
-                  {/* Password field only shown when adding */}
-                  {!editingUser && (
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contraseña</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Introduce una contraseña segura" {...field} disabled={isSubmitting} autoComplete="new-password" />
-                            </FormControl>
-                             <p className="text-xs text-muted-foreground">Mínimo 6 caracteres.</p>
-                             <p className="text-xs text-destructive mt-1">¡Importante! La contraseña se guarda sin encriptar en este ejemplo. Implementar hashing seguro en el servidor.</p>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                  )}
+                  {/* Password field logic */}
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña'}
+                          {editingUser && <KeyRound className="inline-block w-4 h-4 ml-1 text-muted-foreground" />}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder={editingUser ? "Dejar vacío para no cambiar" : "Introduce contraseña segura"}
+                            {...field}
+                            disabled={isSubmitting}
+                            autoComplete="new-password" // Important for password managers
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Mínimo 6 caracteres.
+                          {editingUser && " Solo si deseas actualizarla."}
+                        </p>
+                         {!editingUser && ( // Only show warning when adding
+                            <p className="text-xs text-destructive mt-1">
+                                ¡Importante! La contraseña se guarda sin encriptar en este ejemplo. Implementar hashing seguro en el servidor.
+                            </p>
+                          )}
+                        <FormMessage /> {/* Shows validation errors */}
+                      </FormItem>
+                    )}
+                  />
+
 
                   <FormField
                     control={form.control}
@@ -448,8 +551,8 @@ export default function UsersPage() {
                          <TableCell>{user.correo}</TableCell>
                          <TableCell>{user.perfil}</TableCell>
                           <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === 'activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {user.status}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === 'activo' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                                {user.status === 'activo' ? 'Activo' : 'Inactivo'}
                             </span>
                           </TableCell>
                          <TableCell className="text-right space-x-1">
@@ -459,10 +562,10 @@ export default function UsersPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
+                              className={`text-destructive hover:text-destructive-foreground hover:bg-destructive/90 ${loggedInUser?.id === user.id ? 'opacity-50 cursor-not-allowed' : ''}`} // Disable visually if self
                               onClick={() => handleDeleteClick(user.id, user.nombre)}
                                aria-label={`Eliminar ${user.nombre}`}
-                               disabled={isSubmitting} // Disable delete while another operation is in progress
+                               disabled={isSubmitting || loggedInUser?.id === user.id} // Disable functionally if self or submitting
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

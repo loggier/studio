@@ -52,7 +52,7 @@ export interface NewUserData {
   status: UserStatus;
 }
 
-// Structure for updating a user (password changes should be handled separately/securely)
+// Structure for updating a user (includes optional password update)
 export interface UpdateUserData {
   nombre?: string;
   correo?: string;
@@ -60,7 +60,7 @@ export interface UpdateUserData {
   perfil?: UserProfile;
   telefono?: string;
   status?: UserStatus;
-  // Password updates are omitted here for security reasons in this client-side example
+  password?: string; // Optional: For password updates (MUST be handled securely)
 }
 
 const usersCollectionRef = collection(db, 'users');
@@ -157,7 +157,7 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
 
 /**
  * Updates an existing user in the Firestore 'users' collection.
- * Does not handle password updates.
+ * WARNING: Handles password updates by storing plain text. Implement hashing server-side.
  * @param userId - The ID of the user document to update.
  * @param updateData - An object containing the fields to update.
  * @returns A promise that resolves when the update is complete.
@@ -189,8 +189,21 @@ export async function updateUser(userId: string, updateData: UpdateUserData): Pr
         if (updateData.telefono !== undefined) dataToUpdate.telefono = updateData.telefono.trim() || null;
         if (updateData.status !== undefined) dataToUpdate.status = updateData.status;
 
-        // Remove the updatedAt field if no other fields are being updated
-        // Check if more than just 'updatedAt' is present
+        // --- Handle Optional Password Update ---
+        // WARNING: Storing plain text password directly is insecure.
+        if (updateData.password !== undefined) {
+            if (typeof updateData.password === 'string' && updateData.password.length >= 6) {
+                 console.warn("SECURITY RISK: Updating plain text password in updateUser. Implement server-side hashing.");
+                dataToUpdate.password = updateData.password; // Storing plain text - BAD PRACTICE
+            } else if (typeof updateData.password === 'string' && updateData.password.length > 0) {
+                 // If password is provided but doesn't meet criteria (e.g., length)
+                 throw new Error("La nueva contraseña debe tener al menos 6 caracteres.");
+            }
+            // If updateData.password is an empty string or undefined/null, it won't be added to dataToUpdate
+        }
+
+
+        // Check if there are actual fields to update besides the timestamp
         if (Object.keys(dataToUpdate).length <= 1) {
             console.log("No fields to update for user:", userId);
             return; // Nothing to update besides timestamp
