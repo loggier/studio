@@ -18,17 +18,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2 } from 'lucide-react'; // Import Edit if needed
-import { fetchBrands, addBrand, deleteBrand, Brand } from '@/lib/firebase/firestore/brands'; // Import Firestore functions
+import { PlusCircle, Trash2 } from 'lucide-react';
+import { fetchBrands, addBrand, deleteBrand, Brand } from '@/lib/firebase/firestore/brands';
 
 // Zod schema for brand form validation remains the same
 const brandSchema = z.object({
-  name: z.string().min(1, { message: 'Brand name is required' }).max(50, { message: 'Brand name too long' }),
+  name: z.string().min(1, { message: 'El nombre de la marca es obligatorio' }).max(50, { message: 'El nombre de la marca es demasiado largo' }),
 });
 
 type BrandFormData = z.infer<typeof brandSchema>;
-
-// Remove mock data and functions
 
 export default function BrandsPage() {
   const [brands, setBrands] = React.useState<Brand[]>([]);
@@ -50,17 +48,17 @@ export default function BrandsPage() {
       const data = await fetchBrands(); // Use Firestore fetch
       setBrands(data);
     } catch (err) {
-      console.error('Failed to fetch brands:', err);
-      setError('Failed to load brands.');
+      console.error('Error al obtener marcas:', err);
+      setError('Error al cargar las marcas.');
       toast({
         variant: "destructive",
-        title: "Error Loading Brands",
-        description: "Could not fetch brands from the database. Please try again later.",
+        title: "Error al Cargar Marcas",
+        description: "No se pudieron obtener las marcas de la base de datos. Por favor, inténtalo de nuevo más tarde.",
       });
     } finally {
       setIsLoading(false);
     }
-  }, [toast]); // Add toast as dependency
+  }, [toast]);
 
   React.useEffect(() => {
     loadBrands();
@@ -70,39 +68,38 @@ export default function BrandsPage() {
     try {
       const newBrand = await addBrand({ name: data.name }); // Use Firestore add
       toast({
-        title: 'Brand Added',
-        description: `Brand "${newBrand.name}" has been successfully added.`,
+        title: 'Marca Agregada',
+        description: `La marca "${newBrand.name}" ha sido agregada exitosamente.`,
       });
       form.reset(); // Reset form fields
       await loadBrands(); // Reload the list
     } catch (err) {
-      console.error('Failed to add brand:', err);
+      console.error('Error al agregar marca:', err);
       toast({
         variant: 'destructive',
-        title: 'Error Adding Brand',
-        description: err instanceof Error ? err.message : 'Failed to add brand. Please try again.',
+        title: 'Error al Agregar Marca',
+        description: err instanceof Error ? err.message : 'Error al agregar la marca. Por favor, inténtalo de nuevo.',
       });
     }
   };
 
   const handleDelete = async (brandId: string, brandName: string) => {
-    // TODO: Add confirmation dialog here for better UX
-    if (!confirm(`Are you sure you want to delete the brand "${brandName}"? This action cannot be undone.`)) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar la marca "${brandName}"? Esta acción no se puede deshacer.`)) {
       return;
     }
     try {
       await deleteBrand(brandId); // Use Firestore delete
       toast({
-        title: "Brand Deleted",
-        description: `Brand "${brandName}" has been deleted.`,
+        title: "Marca Eliminada",
+        description: `La marca "${brandName}" ha sido eliminada.`,
       });
       await loadBrands(); // Refresh the list
     } catch (err) {
-      console.error("Failed to delete brand:", err);
+      console.error("Error al eliminar marca:", err);
       toast({
         variant: "destructive",
-        title: "Error Deleting Brand",
-        description: err instanceof Error ? err.message : "Failed to delete brand. It might be in use or another error occurred.",
+        title: "Error al Eliminar Marca",
+        description: err instanceof Error ? err.message : "Error al eliminar la marca. Podría estar en uso u ocurrió otro error.",
       });
     }
   };
@@ -113,8 +110,8 @@ export default function BrandsPage() {
       <div className="md:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle>Add New Brand</CardTitle>
-            <CardDescription>Create a new vehicle brand.</CardDescription>
+            <CardTitle>Agregar Nueva Marca</CardTitle>
+            <CardDescription>Crea una nueva marca de vehículo.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -124,9 +121,9 @@ export default function BrandsPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Brand Name</FormLabel>
+                      <FormLabel>Nombre de la Marca</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Toyota" {...field} />
+                        <Input placeholder="Ej: Toyota" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -134,7 +131,7 @@ export default function BrandsPage() {
                 />
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  {form.formState.isSubmitting ? 'Adding...' : 'Add Brand'}
+                  {form.formState.isSubmitting ? 'Agregando...' : 'Agregar Marca'}
                 </Button>
               </form>
             </Form>
@@ -146,16 +143,16 @@ export default function BrandsPage() {
       <div className="md:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Existing Brands</CardTitle>
-            <CardDescription>List of managed vehicle brands.</CardDescription>
+            <CardTitle>Marcas Existentes</CardTitle>
+            <CardDescription>Lista de marcas de vehículos gestionadas.</CardDescription>
           </CardHeader>
           <CardContent>
             {error && !isLoading && <p className="text-destructive mb-4">{error}</p>} {/* Show error only if not loading */}
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Brand Name</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Nombre de la Marca</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -183,7 +180,7 @@ export default function BrandsPage() {
                            size="icon"
                            className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
                            onClick={() => handleDelete(brand.id, brand.name)}
-                           aria-label={`Delete ${brand.name}`}
+                           aria-label={`Eliminar ${brand.name}`}
                          >
                            <Trash2 className="h-4 w-4" />
                          </Button>
@@ -193,7 +190,7 @@ export default function BrandsPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={2} className="h-24 text-center">
-                      No brands found. Add one using the form.
+                      No se encontraron marcas. Agrega una usando el formulario.
                     </TableCell>
                   </TableRow>
                 )}
