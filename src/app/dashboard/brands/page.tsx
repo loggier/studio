@@ -219,9 +219,9 @@ export default function BrandsPage() {
                   ))
                 ) : brands.length > 0 ? (
                   brands.map((brand) => (
-                    <TableRow key={brand.id} className={editingBrand?.id === brand.id ? 'bg-muted/50' : ''}> {/* Highlight row being edited */}
+                    <TableRow key={brand.id} className={editingBrand?.id === brand.id ? 'bg-muted/50' : ''}>
                       <TableCell className="font-medium">{brand.name}</TableCell>
-                       <TableCell className="text-right space-x-1"> {/* Space between buttons */}
+                      <TableCell className="text-right space-x-1"> {/* Space between buttons */}
                          <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)} aria-label={`Editar ${brand.name}`}>
                             <Edit className="h-4 w-4" />
                          </Button>
@@ -234,7 +234,7 @@ export default function BrandsPage() {
                          >
                            <Trash2 className="h-4 w-4" />
                          </Button>
-                       </TableCell>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
