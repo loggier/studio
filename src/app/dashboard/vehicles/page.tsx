@@ -144,9 +144,9 @@ export default function VehiclesPage() {
                 <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
                 <TableHead>Año</TableHead>
-                <TableHead>Color</TableHead>
+                <TableHead>Color(es)</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Imágenes</TableHead> {/* Added Images column */}
+                <TableHead>Imágenes</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -171,12 +171,12 @@ export default function VehiclesPage() {
               ) : vehicles.length > 0 ? (
                 vehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium font-mono text-xs">{vehicle.vin}</TableCell>
-                    <TableCell className="font-semibold">{vehicle.plate}</TableCell>
-                    <TableCell>{vehicle.brand}</TableCell>
-                    <TableCell>{vehicle.model}</TableCell>
-                    <TableCell>{vehicle.year}</TableCell>
-                    <TableCell>{vehicle.colors}</TableCell>
+                    <TableCell className="font-medium font-mono text-xs">{vehicle.vin || 'N/A'}</TableCell>
+                    <TableCell className="font-semibold">{vehicle.plate || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.brand || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.model || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.year || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.colors || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(vehicle.status)}>
                         {vehicle.status === 'Active' ? 'Activo' : vehicle.status === 'Inactive' ? 'Inactivo' : 'Mantenimiento'}
@@ -184,7 +184,7 @@ export default function VehiclesPage() {
                     </TableCell>
                      <TableCell>
                         {vehicle.imageUrls && vehicle.imageUrls.length > 0 ? (
-                         <div className="flex space-x-1">
+                         <div className="flex space-x-1 items-center">
                             {/* Display only the first image as a thumbnail */}
                            <Image
                              src={vehicle.imageUrls[0]}
@@ -192,13 +192,15 @@ export default function VehiclesPage() {
                              width={40} // Smaller size for thumbnail
                              height={30}
                              className="rounded object-cover"
-                             unoptimized // Add if domain is not configured in next.config.js
+                             // Consider adding 'priority' if these are above the fold
+                             // Consider 'unoptimized' if hostname not in next.config.js
+                             unoptimized // Assuming hostname might not be configured
                              onError={(e) => e.currentTarget.style.display = 'none'} // Hide on error
                            />
                            {/* Indicate if more images exist */}
                            {vehicle.imageUrls.length > 1 && (
-                             <span className="text-xs text-muted-foreground self-center">
-                               +{vehicle.imageUrls.length - 1}
+                             <span className="text-xs text-muted-foreground self-center ml-1">
+                               +{vehicle.imageUrls.length - 1} más
                              </span>
                            )}
                           </div>
@@ -224,6 +226,7 @@ export default function VehiclesPage() {
                 ))
               ) : (
                 <TableRow>
+                  {/* Adjusted colSpan to match the number of columns */}
                   <TableCell colSpan={9} className="h-24 text-center">
                     No se encontraron vehículos.
                   </TableCell>
@@ -256,7 +259,8 @@ export default function VehiclesPage() {
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           vehicle={vehicleToEdit}
-          brands={brands}
+          brands={brands} // Pass fetched brands
+          // Models are fetched dynamically inside the dialog based on brand selection
           onUpdate={handleUpdateVehicle}
        />
     </>

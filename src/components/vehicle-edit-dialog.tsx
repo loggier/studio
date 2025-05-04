@@ -38,17 +38,17 @@ import type { Brand } from '@/lib/firebase/firestore/brands';
 import type { Model } from '@/lib/firebase/firestore/models';
 import { fetchModelsForSelectByBrand } from '@/lib/firebase/firestore/vehicles'; // Import function to fetch models by brand
 
-// Zod schema for vehicle edit form validation
+// Zod schema for vehicle edit form validation based on requested fields
 const vehicleEditSchema = z.object({
   vin: z.string().min(1, 'VIN es obligatorio').max(17, 'VIN inválido'),
   plate: z.string().min(1, 'Placa es obligatoria').max(10, 'Placa inválida'),
-  modelId: z.string().min(1, 'Modelo es obligatorio'),
-  year: z.coerce.number().min(1900, 'Año inválido').max(new Date().getFullYear() + 1, 'Año inválido'), // Coerce to number
-  colors: z.string().min(1, 'Color es obligatorio').max(50, 'Color demasiado largo'),
+  modelId: z.string().min(1, 'Modelo es obligatorio'), // Model ID is required
+  year: z.coerce.number().int().min(1900, 'Año inválido').max(new Date().getFullYear() + 1, 'Año inválido'), // Keep as number for validation
+  colors: z.string().min(1, 'Color(es) es obligatorio').max(50, 'Color(es) demasiado largo'),
   status: z.enum(['Active', 'Inactive', 'Maintenance'], { required_error: 'Estado es obligatorio' }),
-  corte: z.string().max(100, 'Corte demasiado largo').optional(),
-  observation: z.string().max(500, 'Observación demasiado larga').optional(),
-  ubicacion: z.string().max(100, 'Ubicación demasiado larga').optional(),
+  corte: z.string().max(100, 'Corte demasiado largo').optional().nullable(), // Allow optional and nullable
+  observation: z.string().max(500, 'Observación demasiado larga').optional().nullable(), // Allow optional and nullable
+  ubicacion: z.string().max(100, 'Ubicación demasiado larga').optional().nullable(), // Allow optional and nullable
 });
 
 type VehicleEditFormData = z.infer<typeof vehicleEditSchema>;
@@ -72,11 +72,12 @@ export function VehicleEditDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [modelsForSelectedBrand, setModelsForSelectedBrand] = React.useState<Pick<Model, 'id' | 'name'>[]>([]);
+  // Store the brand ID separately for dynamic model fetching
   const [selectedBrandId, setSelectedBrandId] = React.useState<string | null>(null);
 
   const form = useForm<VehicleEditFormData>({
     resolver: zodResolver(vehicleEditSchema),
-    defaultValues: { // Initialize with empty or default values
+    defaultValues: { // Initialize with empty or default values matching the schema
       vin: '',
       plate: '',
       modelId: '',
@@ -92,14 +93,14 @@ export function VehicleEditDialog({
   // Effect to reset form when vehicle data changes or dialog closes
   React.useEffect(() => {
     if (open && vehicle) {
-      // Find the brand ID associated with the vehicle's model
-       const initialBrandId = brands.find(b => b.name === vehicle.brand)?.id || null;
-       setSelectedBrandId(initialBrandId);
+      // Find the brand ID associated with the vehicle's modelId
+       const modelBrandId = vehicle.brand ? brands.find(b => b.name === vehicle.brand)?.id : null;
+       setSelectedBrandId(modelBrandId); // Set the initial brand ID
 
       form.reset({
         vin: vehicle.vin || '',
         plate: vehicle.plate || '',
-        modelId: vehicle.modelId || '',
+        modelId: vehicle.modelId || '', // Use modelId from vehicle data
         year: vehicle.year || new Date().getFullYear(),
         colors: vehicle.colors || '',
         status: vehicle.status || 'Active',
@@ -109,8 +110,8 @@ export function VehicleEditDialog({
       });
     } else if (!open) {
       form.reset(); // Reset form when dialog closes
-      setSelectedBrandId(null);
-      setModelsForSelectedBrand([]);
+      setSelectedBrandId(null); // Reset brand selection
+      setModelsForSelectedBrand([]); // Clear models
     }
   }, [open, vehicle, form, brands]);
 
@@ -119,13 +120,16 @@ export function VehicleEditDialog({
     const fetchModels = async () => {
       if (selectedBrandId) {
         try {
+          setModelsForSelectedBrand([]); // Clear previous models while loading
           const models = await fetchModelsForSelectByBrand(selectedBrandId);
           setModelsForSelectedBrand(models);
-          // Optionally reset modelId field if the current vehicle's modelId
-          // doesn't belong to the newly selected brand (or handle this logic differently)
-          // if (vehicle && vehicle.modelId && !models.some(m => m.id === vehicle.modelId)) {
-          //     form.setValue('modelId', ''); // Reset if model doesn't match brand
-          // }
+
+          // If the current form modelId doesn't belong to the new brand, reset it
+          const currentModelId = form.getValues('modelId');
+          if (currentModelId && !models.some(m => m.id === currentModelId)) {
+              form.setValue('modelId', '', { shouldValidate: true }); // Reset modelId if it's not in the new list
+          }
+
         } catch (error) {
           console.error("Error fetching models for brand:", error);
           setModelsForSelectedBrand([]); // Clear models on error
@@ -137,15 +141,17 @@ export function VehicleEditDialog({
     };
 
     fetchModels();
-  }, [selectedBrandId, form, toast]);
+   }, [selectedBrandId, form, toast]); // Rerun when selectedBrandId changes
 
   const onSubmit = async (data: VehicleEditFormData) => {
     if (!vehicle) return;
     setIsSubmitting(true);
     try {
+        // Prepare data for Firestore, ensuring correct types and structure
         const updateData: UpdateVehicleData = {
             ...data,
-            // Brand and model names are derived from modelId selection in the updateVehicle function
+            year: Number(data.year), // Ensure year is a number
+            // Brand and model names will be updated based on modelId in the updateVehicle function
         };
       await onUpdate(vehicle.id, updateData);
       toast({
@@ -165,14 +171,6 @@ export function VehicleEditDialog({
     }
   };
 
-  // Function to find the brand ID based on the currently selected model ID in the form
-   const findBrandIdForModel = (modelId: string): string | null => {
-        // This requires knowing the brand associated with each model, which we don't have directly here.
-        // We need to fetch the selected model's details or rely on the initial vehicle data.
-        // Let's use the initially determined selectedBrandId for simplicity,
-        // assuming the user selects a brand first, then a model.
-       return selectedBrandId;
-   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -180,12 +178,12 @@ export function VehicleEditDialog({
         <DialogHeader>
           <DialogTitle>Editar Vehículo</DialogTitle>
           <DialogDescription>
-            Modifica los detalles del vehículo con placa {vehicle?.plate}. Los cambios en las imágenes no son permitidos aquí.
+            Modifica los detalles del vehículo con placa <strong>{vehicle?.plate}</strong>. Las imágenes no se pueden modificar aquí.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-4">
+            {/* Form fields matching the requested structure */}
               <FormField
                 control={form.control}
                 name="vin"
@@ -193,7 +191,7 @@ export function VehicleEditDialog({
                   <FormItem>
                     <FormLabel>VIN</FormLabel>
                     <FormControl>
-                      <Input placeholder="VIN del vehículo" {...field} />
+                      <Input placeholder="VIN del vehículo" {...field} disabled={isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -206,21 +204,23 @@ export function VehicleEditDialog({
                   <FormItem>
                     <FormLabel>Placa</FormLabel>
                     <FormControl>
-                      <Input placeholder="Placa del vehículo" {...field} />
+                      <Input placeholder="Placa del vehículo" {...field} disabled={isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-               {/* Brand Selector */}
+
+              {/* Brand Selector - Controls selectedBrandId state */}
               <FormItem>
                  <FormLabel>Marca</FormLabel>
                  <Select
                     value={selectedBrandId ?? ''}
                     onValueChange={(brandId) => {
-                        setSelectedBrandId(brandId);
-                        form.setValue('modelId', ''); // Reset model when brand changes
+                        setSelectedBrandId(brandId); // Update state to trigger model fetch
+                        form.setValue('modelId', ''); // Reset model selection when brand changes
                     }}
+                    disabled={isSubmitting}
                  >
                     <FormControl>
                       <SelectTrigger>
@@ -235,10 +235,10 @@ export function VehicleEditDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {/* No FormMessage needed here as it's not directly a form field */}
+                  {/* No FormMessage needed here directly */}
                </FormItem>
 
-              {/* Model Selector (Dynamic) */}
+              {/* Model Selector (Dynamic based on selectedBrandId) */}
               <FormField
                 control={form.control}
                 name="modelId"
@@ -248,11 +248,11 @@ export function VehicleEditDialog({
                     <Select
                         onValueChange={field.onChange}
                         value={field.value}
-                        disabled={!selectedBrandId || modelsForSelectedBrand.length === 0} // Disable if no brand or models
+                        disabled={!selectedBrandId || modelsForSelectedBrand.length === 0 || isSubmitting}
                     >
                       <FormControl>
                         <SelectTrigger>
-                           <SelectValue placeholder={!selectedBrandId ? "Selecciona una marca primero" : "Selecciona un modelo"} />
+                           <SelectValue placeholder={!selectedBrandId ? "Selecciona marca primero" : "Selecciona un modelo"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -277,7 +277,7 @@ export function VehicleEditDialog({
                   <FormItem>
                     <FormLabel>Año</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Año del modelo" {...field} />
+                      <Input type="number" placeholder="Año del modelo" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -290,7 +290,7 @@ export function VehicleEditDialog({
                   <FormItem>
                     <FormLabel>Color(es)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Color(es) del vehículo" {...field} />
+                      <Input placeholder="Color(es) del vehículo" {...field} disabled={isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -302,7 +302,7 @@ export function VehicleEditDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Estado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona un estado" />
@@ -325,7 +325,7 @@ export function VehicleEditDialog({
                   <FormItem>
                     <FormLabel>Corte Corriente</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Bomba de gasolina" {...field} value={field.value ?? ''} />
+                      <Input placeholder="Ej: Bomba de gasolina" {...field} value={field.value ?? ''} disabled={isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -338,7 +338,7 @@ export function VehicleEditDialog({
                    <FormItem>
                      <FormLabel>Ubicación Corte</FormLabel>
                      <FormControl>
-                       <Input placeholder="Ej: Bajo asiento trasero" {...field} value={field.value ?? ''} />
+                       <Input placeholder="Ej: Bajo asiento trasero" {...field} value={field.value ?? ''} disabled={isSubmitting}/>
                      </FormControl>
                      <FormMessage />
                    </FormItem>
@@ -351,15 +351,15 @@ export function VehicleEditDialog({
                    <FormItem className="sm:col-span-2"> {/* Span across two columns */}
                      <FormLabel>Observaciones</FormLabel>
                      <FormControl>
-                       <Textarea placeholder="Añade observaciones relevantes..." {...field} value={field.value ?? ''} />
+                       <Textarea placeholder="Añade observaciones relevantes..." {...field} value={field.value ?? ''} disabled={isSubmitting}/>
                      </FormControl>
                      <FormMessage />
                    </FormItem>
                  )}
                />
-            </div>
 
-            <DialogFooter>
+            {/* Footer needs to be outside the form grid */}
+            <DialogFooter className="sm:col-span-2 sm:flex sm:justify-end pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={isSubmitting}>
                   Cancelar

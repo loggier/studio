@@ -12,58 +12,45 @@ import {
   Timestamp,
   getDoc,
   writeBatch, // Import writeBatch if needed for complex operations
+  where // Import where for model fetching by brand
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import type { Brand } from './brands';
 import type { Model } from './models';
 
-// Define the structure of a Vehicle in Firestore based on provided structure and existing fields
+// Define the structure of a Vehicle in Firestore based on requested structure
 export interface Vehicle {
   id: string; // Firestore document ID
-  vin: string;
-  plate: string;
-  brand: string; // Store brand name directly (denormalized)
-  model: string; // Store model name directly (denormalized)
+  vin?: string; // Optional based on schema flexibility
+  plate?: string; // Optional based on schema flexibility
+  brand: string; // Store brand name directly
+  model: string; // Store model name directly
   modelId: string; // Reference to the Model document ID
-  year: number;
-  colors: string; // Renamed from 'color' to 'colors' based on provided structure
-  corte?: string; // Optional field from provided structure
-  imageUrls?: string[]; // Optional array from provided structure
-  observation?: string; // Optional field from provided structure
-  ubicacion?: string; // Optional field from provided structure
-  status: 'Active' | 'Inactive' | 'Maintenance'; // Keep status field
+  year: number; // Stored as number
+  colors: string; // Field name as requested
+  corte?: string; // Optional field
+  imageUrls?: string[]; // Optional array
+  observation?: string; // Optional field
+  ubicacion?: string; // Optional field
+  status: 'Active' | 'Inactive' | 'Maintenance'; // Status field
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
 // Define the structure for adding a new vehicle (Not used based on requirements, but good practice)
-// export interface NewVehicleData {
-//   vin: string;
-//   plate: string;
-//   brand: string;
-//   model: string;
-//   modelId: string;
-//   year: number;
-//   colors: string;
-//   status: 'Active' | 'Inactive' | 'Maintenance';
-//   corte?: string;
-//   imageUrls?: string[];
-//   observation?: string;
-//   ubicacion?: string;
-// }
+// export interface NewVehicleData { ... }
 
-// Define the structure for updating a vehicle (excluding non-editable fields like id, imageUrls, createdAt)
+// Define the structure for updating a vehicle (matching the editable fields)
 export interface UpdateVehicleData {
   vin?: string;
   plate?: string;
-  brand?: string; // Keep brand name here if it can change (though usually linked to modelId)
-  model?: string; // Keep model name here if it can change (though usually linked to modelId)
+  // Brand and model names are derived from modelId, not directly updated here
   modelId?: string;
-  year?: number;
+  year?: number; // Keep as number
   colors?: string;
-  corte?: string;
-  observation?: string;
-  ubicacion?: string;
+  corte?: string | null; // Allow null to clear optional fields
+  observation?: string | null; // Allow null
+  ubicacion?: string | null; // Allow null
   status?: 'Active' | 'Inactive' | 'Maintenance';
 }
 
@@ -87,21 +74,21 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
       const year = typeof data.year === 'number' ? data.year : 0;
       return {
         id: doc.id,
-        vin: data.vin || '',
-        plate: data.plate || '',
+        vin: data.vin || undefined, // Use undefined for missing optional fields
+        plate: data.plate || undefined, // Use undefined
         brand: data.brand || 'Desconocida', // Use stored brand name
         model: data.model || 'Desconocido', // Use stored model name
-        modelId: data.modelId || '',
+        modelId: data.modelId || '', // Ensure modelId exists
         year: year,
         colors: data.colors || '', // Use 'colors' field
-        corte: data.corte,
-        imageUrls: data.imageUrls,
-        observation: data.observation,
-        ubicacion: data.ubicacion,
-        status: data.status || 'Inactive',
+        corte: data.corte || undefined,
+        imageUrls: data.imageUrls || [], // Default to empty array if missing
+        observation: data.observation || undefined,
+        ubicacion: data.ubicacion || undefined,
+        status: data.status || 'Inactive', // Default status
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
-      } as Vehicle;
+      } as Vehicle; // Cast to Vehicle, ensure defaults align with type
     });
 
     return vehicles;
@@ -123,35 +110,58 @@ export async function updateVehicle(vehicleId: string, updateData: UpdateVehicle
         const vehicleDocRef = doc(db, 'vehicles', vehicleId);
         const dataToUpdate: any = { ...updateData, updatedAt: serverTimestamp() };
 
+        // Ensure year is a number if provided
+        if (updateData.year !== undefined) {
+            dataToUpdate.year = Number(updateData.year);
+            if (isNaN(dataToUpdate.year)) {
+                 throw new Error("Invalid year provided.");
+            }
+        }
+
         // If modelId is changing, fetch the new brand and model names
         if (updateData.modelId) {
             const modelDocRef = doc(db, 'models', updateData.modelId);
             const modelSnap = await getDoc(modelDocRef);
             if (modelSnap.exists()) {
                 const modelData = modelSnap.data();
-                dataToUpdate.model = modelData.name; // Update model name
-                // Also update brand name based on the new model's brand
+                dataToUpdate.model = modelData.name; // Update model name from fetched data
+                // Also update brand name based on the new model's brandId
                 const brandDocRef = doc(db, 'brands', modelData.brandId);
                 const brandSnap = await getDoc(brandDocRef);
                 if (brandSnap.exists()) {
                     dataToUpdate.brand = brandSnap.data()?.name; // Update brand name
                 } else {
-                    dataToUpdate.brand = 'Marca Desconocida'; // Fallback
+                    dataToUpdate.brand = 'Marca Desconocida'; // Fallback if brand is somehow missing
                 }
             } else {
-                // Handle case where the new modelId doesn't exist? Maybe throw error or set default names.
-                console.warn(`Model with ID ${updateData.modelId} not found. Setting default names.`);
-                dataToUpdate.model = 'Modelo Desconocido';
-                dataToUpdate.brand = 'Marca Desconocida';
+                // Handle case where the new modelId doesn't exist
+                console.error(`Model with ID ${updateData.modelId} not found during update.`);
+                throw new Error(`El modelo seleccionado (ID: ${updateData.modelId}) no existe.`);
+                // Or set default names if that's preferred:
+                // dataToUpdate.model = 'Modelo Desconocido';
+                // dataToUpdate.brand = 'Marca Desconocida';
             }
         }
 
-        // Remove undefined fields to avoid overwriting with null
+        // Remove fields explicitly set to undefined (optional fields being cleared)
+        // Or handle null values appropriately if your schema uses null for absence
         Object.keys(dataToUpdate).forEach(key => {
             if (dataToUpdate[key] === undefined) {
-                delete dataToUpdate[key];
+                // If you want to remove the field entirely (Firestore doesn't store undefined)
+                // delete dataToUpdate[key];
+                // If you want to set it to null in Firestore:
+                 dataToUpdate[key] = null;
             }
+             // Ensure optional fields are set to null if empty string is passed and should be nullable
+             if (['corte', 'observation', 'ubicacion'].includes(key) && dataToUpdate[key] === '') {
+                 dataToUpdate[key] = null;
+             }
         });
+
+        // Ensure required fields are present before update (though Zod handles this in the form)
+         if (dataToUpdate.modelId === '') throw new Error("Model ID cannot be empty during update.");
+         if (dataToUpdate.colors === '') throw new Error("Colors cannot be empty during update.");
+         // Add checks for other required fields if necessary
 
 
         await updateDoc(vehicleDocRef, dataToUpdate);
@@ -176,11 +186,11 @@ export async function deleteVehicle(vehicleId: string): Promise<void> {
   }
 }
 
-// It might be useful to fetch models filtered by brand for the edit form
+// Fetch models filtered by brand for the edit form
 /**
- * Fetches models associated with a specific brand ID.
+ * Fetches models associated with a specific brand ID for select dropdowns.
  * @param brandId - The ID of the brand to filter models by.
- * @returns A promise that resolves to an array of Model objects (id, name).
+ * @returns A promise that resolves to an array of minimal Model objects (id, name).
  */
 export async function fetchModelsForSelectByBrand(brandId: string): Promise<Pick<Model, 'id' | 'name'>[]> {
     if (!brandId) return []; // Return empty if no brand is selected
