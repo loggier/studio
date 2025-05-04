@@ -9,9 +9,12 @@ import {
   query,
   orderBy,
   Timestamp, // Import Timestamp if you use date fields
-  serverTimestamp // Use serverTimestamp for consistency
+  serverTimestamp, // Use serverTimestamp for consistency
+  where, // Import where for checking models
+  limit // Import limit for efficiency
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config'; // Adjust path as needed
+import { checkModelsExistForBrand } from './models'; // Import the check function
 
 // Define the structure of a Brand in Firestore
 // Add any other fields you might need, like createdAt, updatedAt
@@ -60,6 +63,13 @@ export async function addBrand(newBrandData: NewBrandData): Promise<Brand> {
     const name = newBrandData.name.trim();
     if (!name) throw new Error("Brand name cannot be empty.");
 
+    // Optional: Add check for duplicate brand name before adding
+    // const checkQuery = query(brandsCollectionRef, where("name", "==", name), limit(1));
+    // const checkSnapshot = await getDocs(checkQuery);
+    // if (!checkSnapshot.empty) {
+    //   throw new Error(`Brand with name "${name}" already exists.`);
+    // }
+
     const docData = {
       name: name,
       createdAt: serverTimestamp(), // Use server timestamp for creation
@@ -75,7 +85,7 @@ export async function addBrand(newBrandData: NewBrandData): Promise<Brand> {
 
   } catch (error) {
     console.error('Error adding brand: ', error);
-    throw new Error('Failed to add brand to Firestore.');
+    throw new Error(`Failed to add brand: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -90,6 +100,13 @@ export async function updateBrand(brandId: string, newName: string): Promise<voi
     const name = newName.trim();
     if (!name) throw new Error("Brand name cannot be empty.");
 
+    // Optional: Add check for duplicate brand name before updating
+    // const checkQuery = query(brandsCollectionRef, where("name", "==", name), limit(1));
+    // const checkSnapshot = await getDocs(checkQuery);
+    // if (!checkSnapshot.empty && checkSnapshot.docs[0].id !== brandId) {
+    //   throw new Error(`Another brand with name "${name}" already exists.`);
+    // }
+
     const brandDocRef = doc(db, 'brands', brandId);
     await updateDoc(brandDocRef, {
       name: name,
@@ -97,32 +114,30 @@ export async function updateBrand(brandId: string, newName: string): Promise<voi
     });
   } catch (error) {
     console.error('Error updating brand: ', error);
-    throw new Error('Failed to update brand in Firestore.');
+    throw new Error(`Failed to update brand: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Deletes a brand from the Firestore 'brands' collection.
- * NOTE: Consider adding checks if the brand is associated with models before deletion.
+ * Deletes a brand from the Firestore 'brands' collection after checking for associated models.
  * @param brandId - The ID of the brand document to delete.
  * @returns A promise that resolves when the deletion is complete.
+ * @throws Error if the brand is associated with existing models.
  */
 export async function deleteBrand(brandId: string): Promise<void> {
   try {
-    // TODO: Add logic here to check if the brand is used by any models.
-    // If it is, prevent deletion or ask for confirmation.
-    // Example:
-    // const modelsUsingBrand = await checkModelsForBrand(brandId);
-    // if (modelsUsingBrand.length > 0) {
-    //   throw new Error(`Cannot delete brand. It is used by ${modelsUsingBrand.length} model(s).`);
-    // }
+    // Check if any models are using this brand
+    const modelsExist = await checkModelsExistForBrand(brandId);
+    if (modelsExist) {
+      throw new Error(`No se puede eliminar la marca porque está asociada a uno o más modelos.`);
+    }
 
     const brandDocRef = doc(db, 'brands', brandId);
     await deleteDoc(brandDocRef);
   } catch (error) {
     console.error('Error deleting brand: ', error);
-    // Provide more specific error message if possible
-    if (error instanceof Error && error.message.startsWith('Cannot delete brand')) {
+    // Re-throw the specific error or a generic one
+    if (error instanceof Error && error.message.startsWith('No se puede eliminar la marca')) {
         throw error;
     }
     throw new Error('Failed to delete brand from Firestore.');
