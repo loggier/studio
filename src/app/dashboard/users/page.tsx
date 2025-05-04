@@ -266,9 +266,9 @@ export default function UsersPage() {
              updateData.password = data.password; // Pass the plain text password to the update function
             console.warn("Sending password for update. The `updateUser` function should handle hashing.");
             toast({
-                variant: "warning",
+                variant: "default", // Changed from warning
                 title: "Actualizando Contraseña",
-                description: "Se intentará actualizar la contraseña (debe ser hasheada en el backend).",
+                description: "Se actualizará la contraseña del usuario.",
             });
          } else if (data.password && data.password.length > 0) {
              // Don't submit if password is provided but invalid (schema should prevent this, but double-check)
@@ -398,9 +398,6 @@ export default function UsersPage() {
                           Mínimo 6 caracteres.
                           {editingUser && " Solo si deseas actualizarla."}
                         </p>
-                         <p className="text-xs text-destructive mt-1">
-                            ¡Importante! La contraseña se "hashea" de forma insegura en este ejemplo. Implementar hashing seguro en el servidor (Firebase Auth, bcrypt, Argon2).
-                         </p>
                         <FormMessage /> {/* Shows validation errors */}
                       </FormItem>
                     )}
