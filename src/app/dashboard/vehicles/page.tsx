@@ -89,7 +89,7 @@ export default function VehiclesPage() {
       await deleteVehicle(vehicleToDelete.id);
       toast({
         title: "Vehículo Eliminado",
-        description: `El vehículo con placa "${vehicleToDelete.plate}" ha sido eliminado.`,
+        description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.plate || vehicleToDelete.vin}) ha sido eliminado.`,
       });
       await loadData(); // Refresh the list
     } catch (err) {
@@ -113,18 +113,8 @@ export default function VehiclesPage() {
   }, [loadData]);
 
 
-  const getStatusBadgeVariant = (status: Vehicle['status']) => {
-    switch (status) {
-      case 'Active':
-        return 'default';
-      case 'Inactive':
-        return 'secondary';
-      case 'Maintenance':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
+  // Status badge function removed as status column is removed
+  // const getStatusBadgeVariant = (status: Vehicle['status']) => { ... };
 
   return (
     <>
@@ -139,13 +129,15 @@ export default function VehiclesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>VIN</TableHead>
-                <TableHead>Placa</TableHead>
+                {/* Updated Table Headers based on user request */}
                 <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
+                <TableHead>Model ID</TableHead>
                 <TableHead>Año</TableHead>
                 <TableHead>Color(es)</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Corte Corriente</TableHead>
+                <TableHead>Ubicación Corte</TableHead>
+                <TableHead>Observaciones</TableHead>
                 <TableHead>Imágenes</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -154,14 +146,16 @@ export default function VehiclesPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={`skel-${index}`}>
+                    {/* Adjusted Skeletons for new columns */}
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-10 w-16 rounded" /></TableCell> {/* Skeleton for image */}
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-10 w-16 rounded" /></TableCell>
                     <TableCell className="text-right space-x-1">
                        <Skeleton className="h-8 w-8 inline-block rounded"/>
                        <Skeleton className="h-8 w-8 inline-block rounded"/>
@@ -169,35 +163,29 @@ export default function VehiclesPage() {
                   </TableRow>
                 ))
               ) : vehicles.length > 0 ? (
-                vehicles.map((vehicle) => ( // Ensure no extra space before/after TableRow
+                vehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium font-mono text-xs">{vehicle.vin || 'N/A'}</TableCell>
-                    <TableCell className="font-semibold">{vehicle.plate || 'N/A'}</TableCell>
+                    {/* Updated Table Cells to display correct data */}
                     <TableCell>{vehicle.brand || 'N/A'}</TableCell>
                     <TableCell>{vehicle.model || 'N/A'}</TableCell>
+                    <TableCell className="font-mono text-xs">{vehicle.modelId || 'N/A'}</TableCell>
                     <TableCell>{vehicle.year || 'N/A'}</TableCell>
                     <TableCell>{vehicle.colors || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.corte || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.ubicacion || 'N/A'}</TableCell>
+                    <TableCell className="text-xs max-w-xs truncate">{vehicle.observation || 'N/A'}</TableCell> {/* Added truncation */}
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(vehicle.status)}>
-                        {vehicle.status === 'Active' ? 'Activo' : vehicle.status === 'Inactive' ? 'Inactivo' : 'Mantenimiento'}
-                      </Badge>
-                    </TableCell>
-                     <TableCell>
                         {vehicle.imageUrls && vehicle.imageUrls.length > 0 ? (
                          <div className="flex space-x-1 items-center">
-                            {/* Display only the first image as a thumbnail */}
                            <Image
                              src={vehicle.imageUrls[0]}
-                             alt={`Imagen de ${vehicle.plate}`}
-                             width={40} // Smaller size for thumbnail
+                             alt={`Imagen de ${vehicle.brand} ${vehicle.model}`}
+                             width={40}
                              height={30}
                              className="rounded object-cover"
-                             // Consider adding 'priority' if these are above the fold
-                             // Consider 'unoptimized' if hostname not in next.config.js
                              unoptimized // Assuming hostname might not be configured
-                             onError={(e) => e.currentTarget.style.display = 'none'} // Hide on error
+                             onError={(e) => e.currentTarget.style.display = 'none'}
                            />
-                           {/* Indicate if more images exist */}
                            {vehicle.imageUrls.length > 1 && (
                              <span className="text-xs text-muted-foreground self-center ml-1">
                                +{vehicle.imageUrls.length - 1} más
@@ -209,7 +197,7 @@ export default function VehiclesPage() {
                         )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(vehicle)} aria-label={`Editar ${vehicle.plate}`}>
+                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(vehicle)} aria-label={`Editar ${vehicle.brand} ${vehicle.model}`}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -217,17 +205,17 @@ export default function VehiclesPage() {
                         size="icon"
                         className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
                         onClick={() => handleDeleteClick(vehicle)}
-                        aria-label={`Eliminar ${vehicle.plate}`}
+                        aria-label={`Eliminar ${vehicle.brand} ${vehicle.model}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
-                )) // Ensure no extra space before/after TableRow
+                ))
               ) : (
                 <TableRow>
-                  {/* Adjusted colSpan to match the number of columns */}
-                  <TableCell colSpan={9} className="h-24 text-center">
+                  {/* Adjusted colSpan to match the new number of columns */}
+                  <TableCell colSpan={10} className="h-24 text-center">
                     No se encontraron vehículos.
                   </TableCell>
                 </TableRow>
@@ -243,8 +231,8 @@ export default function VehiclesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo con placa
-              <strong> "{vehicleToDelete?.plate}"</strong>.
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo
+              <strong> {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.plate || vehicleToDelete?.vin})</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

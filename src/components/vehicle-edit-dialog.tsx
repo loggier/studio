@@ -39,16 +39,14 @@ import type { Model } from '@/lib/firebase/firestore/models';
 import { fetchModelsForSelectByBrand } from '@/lib/firebase/firestore/vehicles'; // Import function to fetch models by brand
 
 // Zod schema for vehicle edit form validation based on requested fields
+// Removed vin, plate, and status
 const vehicleEditSchema = z.object({
-  vin: z.string().min(1, 'VIN es obligatorio').max(17, 'VIN inválido'),
-  plate: z.string().min(1, 'Placa es obligatoria').max(10, 'Placa inválida'),
-  modelId: z.string().min(1, 'Modelo es obligatorio'), // Model ID is required
-  year: z.coerce.number().int().min(1900, 'Año inválido').max(new Date().getFullYear() + 1, 'Año inválido'), // Keep as number for validation
+  modelId: z.string().min(1, 'Modelo es obligatorio'),
+  year: z.coerce.number().int().min(1900, 'Año inválido').max(new Date().getFullYear() + 1, 'Año inválido'),
   colors: z.string().min(1, 'Color(es) es obligatorio').max(50, 'Color(es) demasiado largo'),
-  status: z.enum(['Active', 'Inactive', 'Maintenance'], { required_error: 'Estado es obligatorio' }),
-  corte: z.string().max(100, 'Corte demasiado largo').optional().nullable(), // Allow optional and nullable
-  observation: z.string().max(500, 'Observación demasiado larga').optional().nullable(), // Allow optional and nullable
-  ubicacion: z.string().max(100, 'Ubicación demasiado larga').optional().nullable(), // Allow optional and nullable
+  corte: z.string().max(100, 'Corte demasiado largo').optional().nullable(),
+  observation: z.string().max(500, 'Observación demasiado larga').optional().nullable(),
+  ubicacion: z.string().max(100, 'Ubicación demasiado larga').optional().nullable(),
 });
 
 type VehicleEditFormData = z.infer<typeof vehicleEditSchema>;
@@ -77,13 +75,10 @@ export function VehicleEditDialog({
 
   const form = useForm<VehicleEditFormData>({
     resolver: zodResolver(vehicleEditSchema),
-    defaultValues: { // Initialize with empty or default values matching the schema
-      vin: '',
-      plate: '',
+    defaultValues: { // Initialize with empty or default values matching the updated schema
       modelId: '',
-      year: new Date().getFullYear(), // Default to current year
+      year: new Date().getFullYear(),
       colors: '',
-      status: 'Active',
       corte: '',
       observation: '',
       ubicacion: '',
@@ -93,17 +88,15 @@ export function VehicleEditDialog({
   // Effect to reset form when vehicle data changes or dialog closes
   React.useEffect(() => {
     if (open && vehicle) {
-      // Find the brand ID associated with the vehicle's modelId
+       // Find the brand ID associated with the vehicle's modelId
        const modelBrandId = vehicle.brand ? brands.find(b => b.name === vehicle.brand)?.id : null;
        setSelectedBrandId(modelBrandId); // Set the initial brand ID
 
       form.reset({
-        vin: vehicle.vin || '',
-        plate: vehicle.plate || '',
-        modelId: vehicle.modelId || '', // Use modelId from vehicle data
+        // Removed vin, plate, status from reset
+        modelId: vehicle.modelId || '',
         year: vehicle.year || new Date().getFullYear(),
         colors: vehicle.colors || '',
-        status: vehicle.status || 'Active',
         corte: vehicle.corte || '',
         observation: vehicle.observation || '',
         ubicacion: vehicle.ubicacion || '',
@@ -148,6 +141,7 @@ export function VehicleEditDialog({
     setIsSubmitting(true);
     try {
         // Prepare data for Firestore, ensuring correct types and structure
+        // Removed vin, plate, status from updateData
         const updateData: UpdateVehicleData = {
             ...data,
             year: Number(data.year), // Ensure year is a number
@@ -156,7 +150,7 @@ export function VehicleEditDialog({
       await onUpdate(vehicle.id, updateData);
       toast({
         title: 'Vehículo Actualizado',
-        description: `El vehículo con placa ${data.plate} ha sido actualizado.`,
+        description: `El vehículo ${vehicle.brand} ${vehicle.model} ha sido actualizado.`, // Adjusted toast message
       });
       onOpenChange(false); // Close dialog on success
     } catch (error) {
@@ -178,39 +172,12 @@ export function VehicleEditDialog({
         <DialogHeader>
           <DialogTitle>Editar Vehículo</DialogTitle>
           <DialogDescription>
-            Modifica los detalles del vehículo con placa <strong>{vehicle?.plate}</strong>. Las imágenes no se pueden modificar aquí.
+            Modifica los detalles del vehículo <strong>{vehicle?.brand} {vehicle?.model} ({vehicle?.year})</strong>. Las imágenes no se pueden modificar aquí. {/* Updated description */}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-4">
-            {/* Form fields matching the requested structure */}
-              <FormField
-                control={form.control}
-                name="vin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>VIN</FormLabel>
-                    <FormControl>
-                      <Input placeholder="VIN del vehículo" {...field} disabled={isSubmitting}/>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="plate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Placa</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Placa del vehículo" {...field} disabled={isSubmitting}/>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
+            {/* Removed VIN and Plate fields */}
               {/* Brand Selector - Controls selectedBrandId state */}
               <FormItem>
                  <FormLabel>Marca</FormLabel>
@@ -296,28 +263,7 @@ export function VehicleEditDialog({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un estado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Active">Activo</SelectItem>
-                        <SelectItem value="Inactive">Inactivo</SelectItem>
-                        <SelectItem value="Maintenance">Mantenimiento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Status field removed */}
                <FormField
                 control={form.control}
                 name="corte"

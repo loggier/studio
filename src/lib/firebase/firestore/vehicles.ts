@@ -32,7 +32,7 @@ export interface Vehicle {
   imageUrls?: string[]; // Optional array
   observation?: string; // Optional field
   ubicacion?: string; // Optional field
-  status: 'Active' | 'Inactive' | 'Maintenance'; // Status field
+  status: 'Active' | 'Inactive' | 'Maintenance'; // Status field - Keep for potential internal use or future features
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -79,13 +79,13 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
         brand: data.brand || 'Desconocida', // Use stored brand name
         model: data.model || 'Desconocido', // Use stored model name
         modelId: data.modelId || '', // Ensure modelId exists
-        year: year,
+        year: year, // Return year as number
         colors: data.colors || '', // Use 'colors' field
         corte: data.corte || undefined,
         imageUrls: data.imageUrls || [], // Default to empty array if missing
         observation: data.observation || undefined,
         ubicacion: data.ubicacion || undefined,
-        status: data.status || 'Inactive', // Default status
+        status: data.status || 'Inactive', // Default status, keep internally
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       } as Vehicle; // Cast to Vehicle, ensure defaults align with type
