@@ -1,5 +1,4 @@
-// src/app/login/page.tsx
-'use client';
+{'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,14 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { authenticateUserWithPseudoHash } from '@/lib/firebase/firestore/users'; // Import the specific auth function
-
-// --- SECURITY WARNING ---
-// The authentication function `authenticateUserWithPseudoHash` uses an INSECURE pseudo-hashing mechanism.
-// Passwords should ALWAYS be securely hashed server-side (e.g., using Firebase Authentication or bcrypt/Argon2
-// in a backend function) and verified without exposing the hash to the client.
-// This implementation is only for demonstrating the concept based on the request and has significant security flaws.
-// --- END SECURITY WARNING ---
+// Import the specific auth function (now using bcrypt internally, but exported with the old name for compatibility)
+import { authenticateUserWithPseudoHash } from '@/lib/firebase/firestore/users';
 
 export default function LoginPage() {
   const [correo, setCorreo] = useState('');
@@ -29,7 +22,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Use the specific Firestore authentication function with pseudo-hashing
+      // Use the specific Firestore authentication function (now uses bcrypt)
       const result = await authenticateUserWithPseudoHash(correo, password);
 
       if (result.success && result.user) {

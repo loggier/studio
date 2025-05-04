@@ -1,3 +1,4 @@
+'use server';
 // src/lib/firebase/firestore/users.ts
 import {
   collection,
@@ -15,31 +16,9 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import bcrypt from 'bcrypt';
 
-// --- SECURITY WARNING ---
-// Storing and comparing passwords using simple hashing like MD5 (or the pseudo-hash below)
-// is NOT secure against modern attacks. Rainbow tables and brute-force attacks can easily break it.
-// Use Firebase Authentication or a strong, salted hashing algorithm (like Argon2 or bcrypt)
-// implemented server-side (e.g., in Firebase Functions) for production applications.
-// This pseudo-hash implementation is purely for demonstrating the *concept* based on the user request
-// and carries significant security risks.
-// --- END SECURITY WARNING ---
-
-// Basic pseudo-hashing function (NOT CRYPTOGRAPHICALLY SECURE - FOR DEMO ONLY)
-// This is NOT MD5. A real MD5 implementation would require a library or server-side execution.
-const pseudoHash = (password: string): string => {
-  if (!password) return '';
-  // Simple transformation - replace with a real hashing function server-side
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32bit integer
-  }
-  // Add a simple "salt" prefix for demonstration (real salt should be unique per user)
-  return `pseudoSalt_${hash.toString(16)}`;
-};
-
+const SALT_ROUNDS = 10; // Standard salt rounds for bcrypt
 
 export type UserProfile = 'admin' | 'tecnico';
 export type UserStatus = 'activo' | 'inactivo';
@@ -112,7 +91,7 @@ export async function fetchUsers(): Promise<User[]> {
 
 /**
  * Adds a new user to the Firestore 'users' collection.
- * Hashes the password using a pseudo-hash function (INSECURE FOR PRODUCTION).
+ * Hashes the password using bcrypt.
  * @param newUserData - An object containing the new user's details.
  * @returns A promise that resolves to the newly created User object (excluding password).
  */
@@ -132,15 +111,14 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
       throw new Error(`El correo "${correo}" ya está registrado.`);
     }
 
-    // --- HASH THE PASSWORD (Using insecure pseudo-hash) ---
-    const hashedPassword = pseudoHash(newUserData.password);
-    console.warn("SECURITY RISK: Storing pseudo-hashed password in addUser. Use strong, salted server-side hashing (e.g., bcrypt, Argon2) or Firebase Authentication.");
+    // --- HASH THE PASSWORD with bcrypt ---
+    const hashedPassword = await bcrypt.hash(newUserData.password, SALT_ROUNDS);
     // ---
 
     const docData = {
       nombre: nombre,
       correo: correo,
-      password: hashedPassword, // Store the hashed password
+      password: hashedPassword, // Store the bcrypt hash
       empresa: newUserData.empresa?.trim() || null,
       perfil: newUserData.perfil,
       telefono: newUserData.telefono?.trim() || null,
@@ -161,8 +139,9 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
         perfil: addedUserData.perfil,
         telefono: addedUserData.telefono,
         status: addedUserData.status,
-        createdAt: addedUserData.createdAt as Timestamp,
-        updatedAt: addedUserData.updatedAt as Timestamp,
+        // Timestamps might be pending, handle appropriately if needed immediately
+        createdAt: undefined, // Or fetch the doc again if needed
+        updatedAt: undefined,
     } as User;
 
   } catch (error) {
@@ -173,7 +152,7 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
 
 /**
  * Updates an existing user in the Firestore 'users' collection.
- * Hashes the password if provided using a pseudo-hash function (INSECURE FOR PRODUCTION).
+ * Hashes the password using bcrypt if provided.
  * @param userId - The ID of the user document to update.
  * @param updateData - An object containing the fields to update.
  * @returns A promise that resolves when the update is complete.
@@ -205,13 +184,12 @@ export async function updateUser(userId: string, updateData: UpdateUserData): Pr
         if (updateData.telefono !== undefined) dataToUpdate.telefono = updateData.telefono.trim() || null;
         if (updateData.status !== undefined) dataToUpdate.status = updateData.status;
 
-        // --- Handle Optional Password Update ---
+        // --- Handle Optional Password Update with bcrypt ---
         if (updateData.password !== undefined) {
             if (typeof updateData.password === 'string' && updateData.password.length >= 6) {
-                 // --- HASH THE NEW PASSWORD (Using insecure pseudo-hash) ---
-                 const hashedPassword = pseudoHash(updateData.password);
-                 console.warn("SECURITY RISK: Updating with pseudo-hashed password in updateUser. Use strong, salted server-side hashing or Firebase Authentication.");
-                 dataToUpdate.password = hashedPassword; // Store the new hash
+                 // --- HASH THE NEW PASSWORD with bcrypt ---
+                 const hashedPassword = await bcrypt.hash(updateData.password, SALT_ROUNDS);
+                 dataToUpdate.password = hashedPassword; // Store the new bcrypt hash
                  // ---
             } else if (typeof updateData.password === 'string' && updateData.password.length > 0) {
                  // If password is provided but doesn't meet criteria (e.g., length)
@@ -263,13 +241,12 @@ export async function deleteUser(userId: string): Promise<void> {
 
 // Moved authentication logic here to keep it with user data operations
 /**
- * Authenticates a user by comparing a pseudo-hashed password.
- * WARNING: Uses an insecure pseudo-hashing method. Not suitable for production.
+ * Authenticates a user by comparing a password against a stored bcrypt hash.
  * @param correo - User's email.
  * @param contrasena - User's plain text password.
  * @returns Promise resolving to an object with success status, message, and user data (if successful).
  */
-export async function authenticateUserWithPseudoHash(correo: string, contrasena: string) {
+export async function authenticateUserWithBcrypt(correo: string, contrasena: string) {
   try {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('correo', '==', correo.trim().toLowerCase()), limit(1));
@@ -282,17 +259,21 @@ export async function authenticateUserWithPseudoHash(correo: string, contrasena:
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
 
-    // --- INSECURE COMPARISON USING PSEUDO-HASH ---
-    const storedHash = userData.password; // Assume this field stores the pseudo-hash
-    const providedPasswordHash = pseudoHash(contrasena); // Hash the login attempt
+    // --- Secure bcrypt comparison ---
+    const storedHash = userData.password; // Assume this field stores the bcrypt hash
 
-    console.warn("SECURITY RISK: Performing login comparison using insecure pseudo-hash. Use Firebase Authentication or proper server-side verification.");
+    if (!storedHash || typeof storedHash !== 'string') {
+         console.error(`Stored password hash is missing or invalid for user ${correo}`);
+         return { success: false, message: 'Error de autenticación. Contacte al administrador.' }; // Generic error for security
+    }
 
-    if (storedHash && storedHash === providedPasswordHash) {
+    const passwordMatches = await bcrypt.compare(contrasena, storedHash);
+
+    if (passwordMatches) {
        if (userData.status !== 'activo') {
          return { success: false, message: 'La cuenta de usuario está inactiva.' };
        }
-      // Pseudo-hash matches
+      // Password matches
       return {
         success: true,
         user: {
@@ -304,13 +285,32 @@ export async function authenticateUserWithPseudoHash(correo: string, contrasena:
         }
       };
     } else {
-      // Hash doesn't match or stored hash is missing
+      // Password doesn't match
       return { success: false, message: 'Usuario o contraseña inválidos.' };
     }
-    // --- END INSECURE COMPARISON ---
+    // --- End Secure bcrypt comparison ---
 
   } catch (error) {
     console.error("Error during authentication:", error);
     return { success: false, message: 'Error al intentar autenticar. Inténtalo de nuevo.' };
   }
 }
+
+// Keep the pseudo-hash function temporarily if needed elsewhere, but mark as deprecated/insecure
+/**
+ * @deprecated This function uses insecure pseudo-hashing. Use bcrypt instead.
+ */
+const pseudoHash = (password: string): string => {
+  if (!password) return '';
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `pseudoSalt_${hash.toString(16)}`;
+};
+
+
+// Rename the exported authentication function to reflect the change
+export { authenticateUserWithBcrypt as authenticateUserWithPseudoHash };

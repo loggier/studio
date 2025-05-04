@@ -24,6 +24,34 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   webpack: (config, { isServer }) => {
+    // Add rule to handle bcrypt binary files
+    // This prevents errors like "Module parse failed: Unexpected character '�'"
+    config.module.rules.push({
+      test: /\.node$/,
+      use: 'node-loader',
+    });
+
+    // Exclude bcrypt from being processed by Next.js's default loaders on the client-side
+    // if (!isServer) {
+    //   config.externals = {
+    //     ...config.externals,
+    //     'bcrypt': 'commonjs bcrypt',
+    //   };
+    // }
+     // Fixes npm packages that depend on `fs` module
+     // Relevant for bcrypt or similar packages if they rely on fs indirectly
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+
+    return config;
+  },
 };
 
 export default nextConfig;

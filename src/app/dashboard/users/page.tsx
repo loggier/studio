@@ -1,3 +1,4 @@
+'use server';
 // src/app/dashboard/users/page.tsx
 'use client';
 
@@ -264,7 +265,7 @@ export default function UsersPage() {
         // --- Handle Optional Password Update ---
         if (data.password && data.password.length >= 6) {
              updateData.password = data.password; // Pass the plain text password to the update function
-            console.warn("Sending password for update. The `updateUser` function should handle hashing.");
+            // The updateUser function will handle hashing
             toast({
                 variant: "default", // Changed from warning
                 title: "Actualizando Contraseña",
@@ -296,7 +297,7 @@ export default function UsersPage() {
           telefono: data.telefono?.trim() || undefined,
           status: data.status as UserStatus,
         };
-         console.warn("Sending plain text password for new user. The `addUser` function MUST handle hashing securely.");
+        // The addUser function will handle hashing
         const newUser = await addUser(newUserData); // Use Firestore add
         toast({
           title: 'Usuario Agregado',
