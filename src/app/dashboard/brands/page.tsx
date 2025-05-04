@@ -18,8 +18,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { fetchBrands, addBrand, deleteBrand, Brand } from '@/lib/firebase/firestore/brands';
+import { Edit, PlusCircle, Trash2, XCircle } from 'lucide-react';
+import { fetchBrands, addBrand, deleteBrand, updateBrand, Brand } from '@/lib/firebase/firestore/brands';
 
 // Zod schema for brand form validation remains the same
 const brandSchema = z.object({
@@ -29,6 +29,7 @@ const brandSchema = z.object({
 type BrandFormData = z.infer<typeof brandSchema>;
 
 export default function BrandsPage() {
+  const [editingBrand, setEditingBrand] = React.useState<Brand | null>(null); // State to hold the brand being edited
   const [brands, setBrands] = React.useState<Brand[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function BrandsPage() {
     defaultValues: {
       name: '',
     },
+    mode: 'onChange', // Add validation on change for better UX
   });
 
   const loadBrands = React.useCallback(async () => {
@@ -66,21 +68,42 @@ export default function BrandsPage() {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      const newBrand = await addBrand({ name: data.name }); // Use Firestore add
-      toast({
-        title: 'Marca Agregada',
-        description: `La marca "${newBrand.name}" ha sido agregada exitosamente.`,
-      });
+      if (editingBrand) {
+        // Update existing brand
+        await updateBrand(editingBrand.id, data.name);
+        toast({
+          title: 'Marca Actualizada',
+          description: `La marca "${data.name}" ha sido actualizada exitosamente.`,
+        });
+      } else {
+        // Add new brand
+        await addBrand({ name: data.name }); // Use Firestore add
+        toast({
+          title: 'Marca Agregada',
+          description: `La marca "${data.name}" ha sido agregada exitosamente.`,
+        });
+      }
       form.reset(); // Reset form fields
       await loadBrands(); // Reload the list
+      setEditingBrand(null); // Clear editing brand state
     } catch (err) {
-      console.error('Error al agregar marca:', err);
+      console.error('Error al agregar/actualizar marca:', err);
       toast({
         variant: 'destructive',
-        title: 'Error al Agregar Marca',
-        description: err instanceof Error ? err.message : 'Error al agregar la marca. Por favor, inténtalo de nuevo.',
+        title: editingBrand ? 'Error al Actualizar Marca' : 'Error al Agregar Marca',
+        description: err instanceof Error ? err.message : `Error al ${editingBrand ? 'actualizar' : 'agregar'} la marca. Por favor, inténtalo de nuevo.`,
       });
     }
+  };
+
+  const handleEdit = (brand: Brand) => {
+    setEditingBrand(brand);
+    form.setValue('name', brand.name); // Populate form with brand name
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBrand(null); // Clear editing state
+    form.reset(); // Clear the form
   };
 
   const handleDelete = async (brandId: string, brandName: string) => {
@@ -94,6 +117,10 @@ export default function BrandsPage() {
         description: `La marca "${brandName}" ha sido eliminada.`,
       });
       await loadBrands(); // Refresh the list
+       // If the deleted brand was being edited, cancel edit mode
+       if (editingBrand && editingBrand.id === brandId) {
+        handleCancelEdit();
+      }
     } catch (err) {
       console.error("Error al eliminar marca:", err);
       toast({
@@ -106,12 +133,14 @@ export default function BrandsPage() {
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
-      {/* Add Brand Form */}
+      {/* Add/Edit Brand Form */}
       <div className="md:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle>Agregar Nueva Marca</CardTitle>
-            <CardDescription>Crea una nueva marca de vehículo.</CardDescription>
+            <CardTitle>{editingBrand ? 'Editar Marca' : 'Agregar Nueva Marca'}</CardTitle>
+            <CardDescription>
+              {editingBrand ? `Modifica los datos de la marca "${editingBrand.name}".` : 'Crea una nueva marca de vehículo.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -129,10 +158,32 @@ export default function BrandsPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  {form.formState.isSubmitting ? 'Agregando...' : 'Agregar Marca'}
-                </Button>
+                 <div className="flex gap-2 justify-start"> {/* Use flex and gap */}
+                    <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid}>
+                      {editingBrand ? (
+                          <>
+                           {/* Edit icon can be added here if desired */}
+                           {form.formState.isSubmitting ? 'Actualizando...' : 'Actualizar Marca'}
+                          </>
+                      ) : (
+                          <>
+                           <PlusCircle className="mr-2 h-4 w-4" />
+                           {form.formState.isSubmitting ? 'Agregando...' : 'Agregar Marca'}
+                          </>
+                      )}
+                    </Button>
+                    {editingBrand && (
+                        <Button
+                          type="button"
+                          variant="secondary" // Use secondary variant for cancel
+                          onClick={handleCancelEdit}
+                          disabled={form.formState.isSubmitting}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" /> {/* Added Cancel icon */}
+                          Cancelar
+                        </Button>
+                    )}
+                 </div>
               </form>
             </Form>
           </CardContent>
@@ -160,21 +211,20 @@ export default function BrandsPage() {
                   Array.from({ length: 3 }).map((_, index) => (
                     <TableRow key={`skel-brand-${index}`}>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell className="text-right">
-                         {/* Adjust skeleton for single delete button */}
-                        <Skeleton className="h-8 w-8 inline-block ml-2 rounded"/>
+                      <TableCell className="text-right space-x-1"> {/* Add space for multiple icons */}
+                         <Skeleton className="h-8 w-8 inline-block rounded"/>
+                         <Skeleton className="h-8 w-8 inline-block rounded"/>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : brands.length > 0 ? (
                   brands.map((brand) => (
-                    <TableRow key={brand.id}>
+                    <TableRow key={brand.id} className={editingBrand?.id === brand.id ? 'bg-muted/50' : ''}> {/* Highlight row being edited */}
                       <TableCell className="font-medium">{brand.name}</TableCell>
-                       <TableCell className="text-right">
-                         {/* Add Edit button if needed */}
-                         {/* <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)}>
+                       <TableCell className="text-right space-x-1"> {/* Space between buttons */}
+                         <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)} aria-label={`Editar ${brand.name}`}>
                             <Edit className="h-4 w-4" />
-                         </Button> */}
+                         </Button>
                          <Button
                            variant="ghost"
                            size="icon"
