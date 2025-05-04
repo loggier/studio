@@ -24,6 +24,7 @@ export type UserProfile = 'admin' | 'tecnico';
 export type UserStatus = 'activo' | 'inactivo';
 
 // Structure matching Firestore document (excluding password for reads)
+// Timestamps are converted to strings for client component compatibility
 export interface User {
   id: string; // Firestore document ID
   nombre: string;
@@ -32,8 +33,8 @@ export interface User {
   perfil: UserProfile;
   telefono?: string; // Optional
   status: UserStatus;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
+  createdAt?: string; // Changed to string
+  updatedAt?: string; // Changed to string
   // Password HASH should never be fetched or stored in client state unless absolutely necessary
   // and with extreme caution. Usually, authentication handles this.
 }
@@ -63,8 +64,18 @@ export interface UpdateUserData {
 const usersCollectionRef = collection(db, 'users');
 
 /**
+ * Converts Firestore Timestamp to ISO string or returns undefined.
+ * @param timestamp - The Firestore Timestamp or undefined.
+ * @returns ISO date string or undefined.
+ */
+const formatTimestamp = (timestamp: Timestamp | undefined): string | undefined => {
+    return timestamp ? timestamp.toDate().toISOString() : undefined;
+};
+
+
+/**
  * Fetches all users from Firestore, ordered by name.
- * Explicitly excludes password field even if present in the document.
+ * Explicitly excludes password field and converts Timestamps to strings.
  * @returns A promise that resolves to an array of User objects.
  */
 export async function fetchUsers(): Promise<User[]> {
@@ -74,12 +85,14 @@ export async function fetchUsers(): Promise<User[]> {
     const querySnapshot = await getDocs(q);
     const users = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      // Explicitly exclude password hash if it somehow exists in the doc fetched to client
-      const { password, ...userData } = data;
+      // Explicitly exclude password hash
+      const { password, createdAt, updatedAt, ...userData } = data;
       return {
         id: doc.id,
         ...userData,
-      } as User; // Assert type after excluding password
+        createdAt: formatTimestamp(createdAt as Timestamp | undefined), // Convert Timestamp
+        updatedAt: formatTimestamp(updatedAt as Timestamp | undefined), // Convert Timestamp
+      } as User; // Assert type after conversion
     });
     return users;
   } catch (error) {
@@ -129,19 +142,21 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
 
     const docRef = await addDoc(usersCollectionRef, docData);
 
-    // Return user data *without* the password hash
-    const { password, ...addedUserData } = docData; // Exclude password hash from returned data
+    // Fetch the newly added document to get the generated timestamps and ID accurately
+    const newUserSnap = await getDoc(docRef);
+    if (!newUserSnap.exists()) {
+        throw new Error("Failed to retrieve newly added user.");
+    }
+    const addedData = newUserSnap.data();
+    const { password, createdAt, updatedAt, ...rest } = addedData;
+
+
+    // Return user data *without* the password hash and with formatted timestamps
     return {
         id: docRef.id,
-        nombre: addedUserData.nombre,
-        correo: addedUserData.correo,
-        empresa: addedUserData.empresa,
-        perfil: addedUserData.perfil,
-        telefono: addedUserData.telefono,
-        status: addedUserData.status,
-        // Timestamps might be pending, handle appropriately if needed immediately
-        createdAt: undefined, // Or fetch the doc again if needed
-        updatedAt: undefined,
+        ...rest,
+        createdAt: formatTimestamp(createdAt as Timestamp | undefined),
+        updatedAt: formatTimestamp(updatedAt as Timestamp | undefined),
     } as User;
 
   } catch (error) {

@@ -1,6 +1,3 @@
-
-
-
 // src/app/dashboard/users/page.tsx
 'use client';
 
@@ -39,7 +36,7 @@ import {
   addUser,
   updateUser,
   deleteUser,
-  User,
+  User, // User type imported will now have string timestamps
   NewUserData,
   UpdateUserData,
   UserProfile,
@@ -82,6 +79,7 @@ const userSchema = z.object({
 type UserFormData = z.infer<typeof userSchema>;
 
 export default function UsersPage() {
+  // User interface now expects string timestamps due to changes in fetchUsers
   const [users, setUsers] = React.useState<User[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -153,7 +151,7 @@ export default function UsersPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await fetchUsers(); // Use Firestore fetch
+      const data = await fetchUsers(); // Use Firestore fetch (data now has string timestamps)
       setUsers(data);
     } catch (err) {
       console.error('Failed to fetch users:', err);
@@ -170,7 +168,15 @@ export default function UsersPage() {
 
   const handleCancelEdit = React.useCallback(() => {
     setEditingUser(null); // Clear editing state
-    form.reset(); // Clear the form
+    form.reset({ // Explicitly reset to default values
+        nombre: '',
+        correo: '',
+        password: '',
+        empresa: '',
+        perfil: 'tecnico',
+        telefono: '',
+        status: 'activo',
+    });
     form.clearErrors(); // Clear any validation errors
   }, [form]);
 
@@ -597,7 +603,7 @@ export default function UsersPage() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás absolutely seguro?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Esto eliminará permanentemente al usuario
               <strong> "{userToDelete?.nombre}"</strong>.
@@ -614,5 +620,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-
