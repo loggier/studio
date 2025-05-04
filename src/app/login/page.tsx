@@ -100,9 +100,7 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
             </div>
-             <p className="text-xs text-destructive mt-2">
-                **Importante:** Este login usa un método de "hashing" simulado (inseguro). En producción, implementa Firebase Authentication o hashing seguro y salado en servidor (bcrypt/Argon2).
-             </p>
+             {/* Removed the warning paragraph */}
           </CardContent>
           <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
