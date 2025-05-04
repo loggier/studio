@@ -19,45 +19,16 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Trash2 } from 'lucide-react'; // Import Edit if needed
+import { fetchBrands, addBrand, deleteBrand, Brand } from '@/lib/firebase/firestore/brands'; // Import Firestore functions
 
-// Zod schema for brand form validation
+// Zod schema for brand form validation remains the same
 const brandSchema = z.object({
-  id: z.string().optional(), // Optional for creation, needed for identification
   name: z.string().min(1, { message: 'Brand name is required' }).max(50, { message: 'Brand name too long' }),
 });
 
 type BrandFormData = z.infer<typeof brandSchema>;
 
-// Define the structure of a Brand
-interface Brand {
-  id: string;
-  name: string; // Corresponds to 'brand' field in proposal? Using 'name' for consistency.
-}
-
-// Mock data and functions - replace with actual Firebase calls
-let mockBrands: Brand[] = [
-  { id: 'brand1', name: 'Toyota' },
-  { id: 'brand2', name: 'Honda' },
-  { id: 'brand3', name: 'Ford' },
-];
-
-async function fetchBrands(): Promise<Brand[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
-  return [...mockBrands]; // Return a copy
-}
-
-async function addBrand(newBrandData: Omit<Brand, 'id'>): Promise<Brand> {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
-  const newBrand: Brand = { ...newBrandData, id: `brand${mockBrands.length + 1}` };
-  mockBrands.push(newBrand);
-  return newBrand;
-}
-
-async function deleteBrand(brandId: string): Promise<void> {
-   await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
-   mockBrands = mockBrands.filter(b => b.id !== brandId);
-}
-
+// Remove mock data and functions
 
 export default function BrandsPage() {
   const [brands, setBrands] = React.useState<Brand[]>([]);
@@ -76,15 +47,20 @@ export default function BrandsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await fetchBrands();
+      const data = await fetchBrands(); // Use Firestore fetch
       setBrands(data);
     } catch (err) {
       console.error('Failed to fetch brands:', err);
       setError('Failed to load brands.');
+      toast({
+        variant: "destructive",
+        title: "Error Loading Brands",
+        description: "Could not fetch brands from the database. Please try again later.",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]); // Add toast as dependency
 
   React.useEffect(() => {
     loadBrands();
@@ -92,7 +68,7 @@ export default function BrandsPage() {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      const newBrand = await addBrand({ name: data.name });
+      const newBrand = await addBrand({ name: data.name }); // Use Firestore add
       toast({
         title: 'Brand Added',
         description: `Brand "${newBrand.name}" has been successfully added.`,
@@ -103,32 +79,33 @@ export default function BrandsPage() {
       console.error('Failed to add brand:', err);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to add brand. Please try again.',
+        title: 'Error Adding Brand',
+        description: err instanceof Error ? err.message : 'Failed to add brand. Please try again.',
       });
     }
   };
 
   const handleDelete = async (brandId: string, brandName: string) => {
-    if (confirm(`Are you sure you want to delete the brand "${brandName}"? This action cannot be undone.`)) {
-        try {
-            await deleteBrand(brandId);
-            toast({
-                title: "Brand Deleted",
-                description: `Brand "${brandName}" has been deleted.`,
-            });
-            await loadBrands(); // Refresh the list
-        } catch (err) {
-            console.error("Failed to delete brand:", err);
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to delete brand. It might be in use.",
-            });
-        }
+    // TODO: Add confirmation dialog here for better UX
+    if (!confirm(`Are you sure you want to delete the brand "${brandName}"? This action cannot be undone.`)) {
+      return;
     }
-};
-
+    try {
+      await deleteBrand(brandId); // Use Firestore delete
+      toast({
+        title: "Brand Deleted",
+        description: `Brand "${brandName}" has been deleted.`,
+      });
+      await loadBrands(); // Refresh the list
+    } catch (err) {
+      console.error("Failed to delete brand:", err);
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Brand",
+        description: err instanceof Error ? err.message : "Failed to delete brand. It might be in use or another error occurred.",
+      });
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -173,7 +150,7 @@ export default function BrandsPage() {
             <CardDescription>List of managed vehicle brands.</CardDescription>
           </CardHeader>
           <CardContent>
-            {error && <p className="text-destructive mb-4">{error}</p>}
+            {error && !isLoading && <p className="text-destructive mb-4">{error}</p>} {/* Show error only if not loading */}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -187,7 +164,7 @@ export default function BrandsPage() {
                     <TableRow key={`skel-brand-${index}`}>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell className="text-right">
-                        <Skeleton className="h-8 w-8 inline-block ml-2 rounded"/>
+                         {/* Adjust skeleton for single delete button */}
                         <Skeleton className="h-8 w-8 inline-block ml-2 rounded"/>
                       </TableCell>
                     </TableRow>

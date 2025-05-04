@@ -1,41 +1,93 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
+.yarn/install-state.gz
 
-# testing
+# Testing
 /coverage
 
-# next.js
+# Next.js
 /.next/
 /out/
 
-# production
+# Production
 /build
 
-# misc
+# Misc
 .DS_Store
 *.pem
 
-# debug
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# vercel
-.vercel
+# Local development environment variables
+.env*.local
 
-# typescript
+# Debug log from pnpm, yarn, lerna, and npm
+# *.log
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# IDEs and configuration files
+.idea
+*.iml
+.project
+.classpath
+.c9/
+
+# Temporary files, backups and downloads
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+
+# parcel cache files
+.parcel-cache
+
+# Turbo repo cache files
+.turbo
+
+# TypeScript cache files
 *.tsbuildinfo
-next-env.d.ts
 
-.genkit/*
-.env*
+# Firebase cache
+.firebase
+
+# Genkit cache
+.genkit/cache
