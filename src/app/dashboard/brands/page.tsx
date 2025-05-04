@@ -107,7 +107,8 @@ export default function BrandsPage() {
   };
 
   const handleDelete = async (brandId: string, brandName: string) => {
-    if (!confirm(`¿Estás seguro de que quieres eliminar la marca "${brandName}"? Esta acción no se puede deshacer.`)) {
+    // Use window.confirm for simple confirmation
+    if (!window.confirm(`¿Estás seguro de que quieres eliminar la marca "${brandName}"? Esta acción no se puede deshacer.`)) {
       return;
     }
     try {
