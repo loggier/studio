@@ -61,7 +61,7 @@ const TableRow = React.forwardRef<
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className
     )}
-    {...props}
+    {...props} // Ensure props are spread correctly onto the tr element
   />
 ))
 TableRow.displayName = "TableRow"

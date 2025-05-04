@@ -169,7 +169,7 @@ export default function VehiclesPage() {
                   </TableRow>
                 ))
               ) : vehicles.length > 0 ? (
-                vehicles.map((vehicle) => (
+                vehicles.map((vehicle) => ( // Ensure no extra space before/after TableRow
                   <TableRow key={vehicle.id}>
                     <TableCell className="font-medium font-mono text-xs">{vehicle.vin || 'N/A'}</TableCell>
                     <TableCell className="font-semibold">{vehicle.plate || 'N/A'}</TableCell>
@@ -223,7 +223,7 @@ export default function VehiclesPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
+                )) // Ensure no extra space before/after TableRow
               ) : (
                 <TableRow>
                   {/* Adjusted colSpan to match the number of columns */}
