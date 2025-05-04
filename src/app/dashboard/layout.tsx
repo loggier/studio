@@ -46,7 +46,11 @@ export default function DashboardLayout({
       try {
         const storedUser: StoredUser = JSON.parse(storedUserString);
          // Basic validation of stored data
-         if (storedUser && storedUser.id && storedUser.nombre && storedUser.correo) {
+         if (storedUser && typeof storedUser === 'object' &&
+             storedUser.id && typeof storedUser.id === 'string' &&
+             storedUser.nombre && typeof storedUser.nombre === 'string' &&
+             storedUser.correo && typeof storedUser.correo === 'string' &&
+             storedUser.perfil && typeof storedUser.perfil === 'string') {
             setUser(storedUser);
          } else {
             console.error("Invalid user data structure in localStorage");
@@ -185,3 +189,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+
