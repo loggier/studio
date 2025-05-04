@@ -1,5 +1,6 @@
 
 
+
 // src/app/dashboard/users/page.tsx
 'use client';
 
@@ -307,9 +308,17 @@ export default function UsersPage() {
         });
       }
       // Reset form to default values after BOTH add and update succeed
-      form.reset();
-      await loadUsers(); // Reload the list
+      form.reset({
+          nombre: '',
+          correo: '',
+          password: '',
+          empresa: '',
+          perfil: 'tecnico',
+          telefono: '',
+          status: 'activo',
+      }); // Explicitly reset to default values
       setEditingUser(null); // Exit editing mode / Clear editing state
+      await loadUsers(); // Reload the list
     } catch (err) {
       console.error('Error al agregar/actualizar usuario:', err);
       toast({
@@ -605,4 +614,5 @@ export default function UsersPage() {
     </>
   );
 }
+
 
