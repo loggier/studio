@@ -16,8 +16,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 
-// NOTE: Password handling is NOT secure in this client-side example.
-// In a real application, use Firebase Authentication and handle password hashing server-side.
+// --- SECURITY WARNING ---
+// Storing and comparing plain text passwords as done in this file is HIGHLY INSECURE.
+// Use Firebase Authentication or a secure server-side hashing mechanism (e.g., bcrypt)
+// for production applications. This implementation is for demonstration purposes only
+// based on the current project structure.
+// --- END SECURITY WARNING ---
+
 
 export type UserProfile = 'admin' | 'tecnico';
 export type UserStatus = 'activo' | 'inactivo';
@@ -40,7 +45,7 @@ export interface User {
 export interface NewUserData {
   nombre: string;
   correo: string;
-  password?: string; // Password included for creation, but MUST be hashed server-side
+  password?: string; // Password included for creation, MUST be handled securely server-side
   empresa?: string;
   perfil: UserProfile;
   telefono?: string;
@@ -62,7 +67,7 @@ const usersCollectionRef = collection(db, 'users');
 
 /**
  * Fetches all users from Firestore, ordered by name.
- * Excludes password field.
+ * Explicitly excludes password field even if present in the document.
  * @returns A promise that resolves to an array of User objects.
  */
 export async function fetchUsers(): Promise<User[]> {
@@ -89,7 +94,7 @@ export async function fetchUsers(): Promise<User[]> {
 
 /**
  * Adds a new user to the Firestore 'users' collection.
- * WARNING: Stores password in plain text. Requires server-side hashing.
+ * WARNING: Stores password in plain text in this example. Requires server-side hashing.
  * @param newUserData - An object containing the new user's details.
  * @returns A promise that resolves to the newly created User object (excluding password).
  */
@@ -103,13 +108,9 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
     }
 
     // --- SECURITY WARNING ---
-    // In a real app, NEVER store plain text passwords.
-    // 1. Use Firebase Authentication's createUserWithEmailAndPassword.
-    // 2. Store additional user profile data (name, role, etc.) in Firestore,
-    //    linking it by the Firebase Auth UID.
-    // 3. If not using Firebase Auth, hash the password securely server-side
-    //    (e.g., using bcrypt in a Cloud Function) BEFORE saving to Firestore.
-    console.warn("SECURITY RISK: Storing plain text password. Implement server-side hashing.");
+    // Storing plain text password directly from the client is a major security risk.
+    // Replace this with Firebase Authentication or server-side hashing.
+    console.warn("SECURITY RISK: Storing plain text password in addUser. Implement server-side hashing.");
     // --- END SECURITY WARNING ---
 
     // Check if email already exists
@@ -135,14 +136,17 @@ export async function addUser(newUserData: NewUserData): Promise<User> {
     const docRef = await addDoc(usersCollectionRef, docData);
 
     // Return user data *without* the password
-    const { password, ...addedUserData } = newUserData;
+    const { password, ...addedUserData } = docData; // Exclude password from the data used below
     return {
         id: docRef.id,
-        ...addedUserData,
-        nombre, // Use trimmed name
-        correo, // Use trimmed/lowercase email
-        empresa: docData.empresa, // Use potentially updated optional fields
-        telefono: docData.telefono,
+        nombre: addedUserData.nombre,
+        correo: addedUserData.correo,
+        empresa: addedUserData.empresa,
+        perfil: addedUserData.perfil,
+        telefono: addedUserData.telefono,
+        status: addedUserData.status,
+        createdAt: addedUserData.createdAt as Timestamp, // Cast may be needed depending on setup
+        updatedAt: addedUserData.updatedAt as Timestamp,
     } as User;
 
   } catch (error) {
@@ -186,10 +190,12 @@ export async function updateUser(userId: string, updateData: UpdateUserData): Pr
         if (updateData.status !== undefined) dataToUpdate.status = updateData.status;
 
         // Remove the updatedAt field if no other fields are being updated
+        // Check if more than just 'updatedAt' is present
         if (Object.keys(dataToUpdate).length <= 1) {
             console.log("No fields to update for user:", userId);
             return; // Nothing to update besides timestamp
         }
+
 
         await updateDoc(userDocRef, dataToUpdate);
     } catch (error) {
