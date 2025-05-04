@@ -66,6 +66,46 @@ export default function BrandsPage() {
     loadBrands();
   }, [loadBrands]);
 
+    const handleCancelEdit = React.useCallback(() => {
+      setEditingBrand(null); // Clear editing state
+      form.reset(); // Clear the form
+    }, [form]);
+
+   const handleDelete = React.useCallback(async (brandId: string, brandName: string) => {
+    if (!brandId || !brandName) {
+        console.error("Error: brandId or brandName is missing.");
+        toast({
+            variant: "destructive",
+            title: "Error Interno",
+            description: "No se pudo identificar la marca a eliminar.",
+        });
+        return;
+    }
+     // Use window.confirm for simple confirmation
+     if (!window.confirm(`¿Estás seguro de que quieres eliminar la marca "${brandName}"? Esta acción no se puede deshacer.`)) {
+       return;
+     }
+     try {
+       await deleteBrand(brandId); // Use Firestore delete
+       toast({
+         title: "Marca Eliminada",
+         description: `La marca "${brandName}" ha sido eliminada.`,
+       });
+       await loadBrands(); // Refresh the list
+        // If the deleted brand was being edited, cancel edit mode
+        if (editingBrand && editingBrand.id === brandId) {
+         handleCancelEdit();
+       }
+     } catch (err) {
+       console.error("Error al eliminar marca:", err);
+       toast({
+         variant: "destructive",
+         title: "Error al Eliminar Marca",
+         description: err instanceof Error ? err.message : "Error al eliminar la marca. Podría estar en uso u ocurrió otro error.",
+       });
+     }
+   }, [toast, loadBrands, editingBrand, handleCancelEdit]); // Add dependencies
+
   const onSubmit = async (data: BrandFormData) => {
     try {
       if (editingBrand) {
@@ -101,36 +141,6 @@ export default function BrandsPage() {
     form.setValue('name', brand.name); // Populate form with brand name
   };
 
-  const handleCancelEdit = () => {
-    setEditingBrand(null); // Clear editing state
-    form.reset(); // Clear the form
-  };
-
-  const handleDelete = async (brandId: string, brandName: string) => {
-    // Use window.confirm for simple confirmation
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar la marca "${brandName}"? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-    try {
-      await deleteBrand(brandId); // Use Firestore delete
-      toast({
-        title: "Marca Eliminada",
-        description: `La marca "${brandName}" ha sido eliminada.`,
-      });
-      await loadBrands(); // Refresh the list
-       // If the deleted brand was being edited, cancel edit mode
-       if (editingBrand && editingBrand.id === brandId) {
-        handleCancelEdit();
-      }
-    } catch (err) {
-      console.error("Error al eliminar marca:", err);
-      toast({
-        variant: "destructive",
-        title: "Error al Eliminar Marca",
-        description: err instanceof Error ? err.message : "Error al eliminar la marca. Podría estar en uso u ocurrió otro error.",
-      });
-    }
-  };
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
