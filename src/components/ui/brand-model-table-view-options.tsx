@@ -1,4 +1,3 @@
-tsx
 import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -15,7 +14,7 @@ export function BrandModelTableViewOptions<T>({ table }: BrandModelTableViewOpti
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Filtrar por nombre de marca"
-          value={(table.getGlobalFilter() as string) ?? ''}
+          value={(table.getState().globalFilter as string) ?? ''}
           onChange={(event) => table.setGlobalFilter(event.target.value)}
           className="max-w-sm pl-9"
         />

@@ -1,15 +1,26 @@
 // src/app/dashboard/vehicles/page.tsx
 'use client';
 
-import * as React from 'react';
-import { ColumnDef, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
-
+import React from 'react';
+import Image from 'next/image';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
-import { DataTable } from '@/components/ui/data-table'; 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -21,36 +32,56 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DataTable } from '@/components/ui/data-table';
 import { VehicleTableViewOptions } from '@/components/ui/vehicle-table-view-options';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle as DialogTitleAlt,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { VehicleEditDialog } from '@/components/vehicle-edit-dialog';
-import { fetchVehicles, deleteVehicle, updateVehicle, Vehicle, UpdateVehicleData } from '@/lib/firebase/firestore/vehicles';
+import { ImageViewer } from '@/components/ui/image-viewer';
+
+import {
+  fetchVehicles,
+  deleteVehicle,
+  updateVehicle,
+  Vehicle,
+  UpdateVehicleData,
+} from '@/lib/firebase/firestore/vehicles';
 import { fetchBrandsForSelect } from '@/lib/firebase/firestore/models';
 import type { Brand } from '@/lib/firebase/firestore/brands';
 
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = React.useState<Vehicle[]>([]);
-    const [brands, setBrands] = React.useState<Pick<Brand, 'id' | 'name'>[]>([]);
+  const [brands, setBrands] = React.useState<Pick<Brand, 'id' | 'name'>[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [vehicleToDelete, setVehicleToDelete] = React.useState<Vehicle | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [vehicleToEdit, setVehicleToEdit] = React.useState<Vehicle | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [vehicleDetails, setVehicleDetails] = React.useState<Vehicle | null>(null);
   const { toast } = useToast();
 
   const loadData = React.useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
       const [vehiclesData, brandsData] = await Promise.all([
         fetchVehicles(),
         fetchBrandsForSelect(),
       ]);
-        setVehicles(vehiclesData);      
-        setBrands(brandsData);   
+      setVehicles(vehiclesData);
+      setBrands(brandsData);
     } catch (err) {
       console.error('Failed to fetch data:', err);
-      setError('No se pudieron cargar los datos. Inténtalo de nuevo más tarde.');
+      setError('No se pudieron cargar los datos.');
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -65,32 +96,36 @@ export default function VehiclesPage() {
     loadData();
   }, [loadData]);
 
-  const handleEditClick = (vehicle: Vehicle) => {
-    setVehicleToEdit(vehicle);
+  const handleEditClick = (v: Vehicle) => {
+    setVehicleToEdit(v);
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteClick = (vehicle: Vehicle) => {
-    setVehicleToDelete(vehicle);
+  const handleDetailsClick = (v: Vehicle) => {
+    setVehicleDetails(v);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleDeleteClick = (v: Vehicle) => {
+    setVehicleToDelete(v);
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDelete = React.useCallback(async () => {
     if (!vehicleToDelete) return;
-
-      try {
-        await deleteVehicle(vehicleToDelete.id);
-        toast({
-          title: 'Vehículo Eliminado',
-          description: `El vehículo ${vehicleToDelete.brand} ${vehicleToDelete.model} (${vehicleToDelete.modelId}) ha sido eliminado.`,
-        });
-        await loadData();
-      } catch (err) {
-        console.error('Error al eliminar vehículo:', err);
-        toast({
+    try {
+      await deleteVehicle(vehicleToDelete.id);
+      toast({
+        title: 'Vehículo Eliminado',
+        description: `${vehicleToDelete.brand} ${vehicleToDelete.model} eliminado.`,
+      });
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting:', err);
+      toast({
         variant: 'destructive',
         title: 'Error al Eliminar',
-        description: err instanceof Error ? err.message : 'No se pudo eliminar el vehículo.',
+        description: err instanceof Error ? err.message : 'No se pudo eliminar.',
       });
     } finally {
       setIsDeleteDialogOpen(false);
@@ -99,116 +134,111 @@ export default function VehiclesPage() {
   }, [vehicleToDelete, toast, loadData]);
 
   const handleUpdateVehicle = React.useCallback(
-    async (vehicleId: string, data: UpdateVehicleData): Promise<void> => {
-      await updateVehicle(vehicleId, data);
+    async (id: string, data: UpdateVehicleData) => {
+      await updateVehicle(id, data);
       await loadData();
     },
     [loadData]
   );
 
-    const columns: ColumnDef<Vehicle>[] = [
-        {
-            accessorKey: 'brand',
-            header: 'Marca',
-        },
-        {
-            accessorKey: 'model',
-            header: 'Modelo',
-        },
-        {
-            accessorKey: 'year',
-            header: 'Año',
-        },
-        {
-            accessorKey: 'colors',
-            header: 'Color(es)',
-        },
-        {
-            accessorKey: 'corte',
-            header: 'Corte Corriente',
-        },
-        {
-            accessorKey: 'ubicacion',
-            header: 'Ubicación Corte',
-        },
-        {
-            accessorKey: 'observation',
-            header: 'Observaciones',
-            cell: ({ row }) => {
-                const observation = row.getValue('observation') as string;
-                return (
-                    <div className="text-xs max-w-xs truncate">
-                        {observation ?? 'N/A'}
-                    </div>
-                );
-            }
-        },
-        {
-            id: 'actions',
-            header: 'Acciones',
-            cell: ({ row }) => {
-                const vehicle = row.original;
-                return (
-                    <div className="flex justify-end gap-2">                        
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(vehicle)} aria-label={`Editar ${vehicle.brand} ${vehicle.model}`}>
-                            <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteClick(vehicle)} aria-label={`Eliminar ${vehicle.brand} ${vehicle.model}`}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                );
-            },
-        },
-    ];
+  const columns: ColumnDef<Vehicle>[] = [
+    { accessorKey: 'brand', header: 'Marca' },
+    { accessorKey: 'model', header: 'Modelo' },
+    { accessorKey: 'year', header: 'Año' },
+    { accessorKey: 'colors', header: 'Color(es)' },
+    { accessorKey: 'corte', header: 'Corte Corriente' },
+    { accessorKey: 'ubicacion', header: 'Ubicación Corte' },
+    {
+      accessorKey: 'observation',
+      header: 'Observaciones',
+      cell: ({ row }) => (
+        <div className="text-xs max-w-xs truncate">
+          {row.getValue('observation') || 'N/A'}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Acciones',
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDetailsClick(v)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEditClick(v)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => handleDeleteClick(v)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
-    const table = useReactTable<Vehicle>({
-        data: vehicles,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
-        globalFilterFn: (row, id, filterValue) => {
-            if (!filterValue) {
-                return true;
-            }
-            const model = String(row.getValue("model")).toLowerCase();
-            const brand = String(row.getValue("brand")).toLowerCase();
-            return model.includes(filterValue.toLowerCase()) || brand.includes(filterValue.toLowerCase());
-        },
-    });
+  const table = useReactTable<Vehicle>({
+    data: vehicles,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, _id, filter) => {
+      const search = String(filter).toLowerCase();
+      return [row.getValue('brand'), row.getValue('model')]
+        .some((v) => String(v).toLowerCase().includes(search));
+    },
+  });
 
   return (
     <>
-        <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Registro de Vehículos</CardTitle>
-          <CardDescription>Lista de todos los vehículos en el sistema.</CardDescription>
+          <CardDescription>
+            Lista de todos los vehículos en el sistema.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && !isLoading && (
             <p className="text-destructive mb-4">{error}</p>
+          )}
+          <div className="flex flex-col gap-4">
+            {!isLoading && <VehicleTableViewOptions table={table} />}
+            {isLoading ? (
+              <Skeleton className="h-[200px] w-full" />
+            ) : (
+              <DataTable columns={columns} data={vehicles} table={table} />
             )}
-            <div className='flex flex-col gap-4'>
-                {!isLoading && <VehicleTableViewOptions table={table} />}
-                {isLoading ? <Skeleton className="h-[200px] w-full" /> : <DataTable columns={columns} data={vehicles} table={table} />}
-            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente el vehículo{' '}
-              <strong>
-                {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.modelId})
-              </strong>.
+              Eliminará permanentemente {vehicleToDelete?.brand}{' '}
+              {vehicleToDelete?.model}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -222,7 +252,6 @@ export default function VehiclesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Vehicle Dialog */}
       <VehicleEditDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -230,7 +259,73 @@ export default function VehiclesPage() {
         brands={brands}
         onUpdate={handleUpdateVehicle}
       />
+
+      <Dialog
+        open={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+      >
+        {vehicleDetails && (
+          <DialogContent className="max-w-4xl sm:max-w-[625px]">
+            <DialogHeader>
+              <DialogTitleAlt>Detalles del Vehículo</DialogTitleAlt>
+              <DialogDescription>
+                <span className="text-lg font-semibold">
+                  {vehicleDetails.brand} {vehicleDetails.model}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {vehicleDetails.imageUrls.slice(0, 5).map((url, i) => (
+                <div
+                  key={i}
+                  className="relative w-full h-40 sm:h-32 md:h-40 lg:h-48"
+                >
+                  <ImageViewer imageUrl={url}>
+                    {({ openImageViewer }) => (
+                      <Image
+                        src={url}
+                        alt={`Imagen ${i + 1}`}
+                        fill
+                        className="object-cover cursor-pointer rounded-md"
+                        onClick={openImageViewer}
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        unoptimized
+                      />
+                    )}
+                  </ImageViewer>
+                </div>
+              ))}
+            </div>
+            {vehicleDetails.imageUrls.length > 5 && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                +{vehicleDetails.imageUrls.length - 5} imágenes adicionales
+              </p>
+            )}
+            <Separator className="my-4" />
+            <div className="grid grid-cols-2 gap-4">
+              <p>
+                <span className="font-semibold">Año:</span> {vehicleDetails.year}
+              </p>
+              <p>
+                <span className="font-semibold">Color(es):</span>{' '}
+                {vehicleDetails.colors}
+              </p>
+              <p>
+                <span className="font-semibold">Corte:</span> {vehicleDetails.corte}
+              </p>
+              <p>
+                <span className="font-semibold">Ubicación Corte:</span>{' '}
+                {vehicleDetails.ubicacion}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setIsDetailsDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </>
   );
-};
-
+}

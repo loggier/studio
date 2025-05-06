@@ -249,11 +249,8 @@ export default function ModelsPage() {
           return modelName.includes(filterString) || brandName.includes(filterString);
         },
 
-        onGlobalFilterChange: (updaterOrValue) => {
-          const filterValue = typeof updaterOrValue === 'function' ? updaterOrValue('') : updaterOrValue;
-          table.setGlobalFilter(filterValue);
-        },        
-
+        
+        
         
     
       });
