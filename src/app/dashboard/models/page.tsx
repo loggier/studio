@@ -16,11 +16,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, Edit, XCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, XCircle, Search } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +40,17 @@ import {
     NewModelData,
     UpdateModelData
 } from '@/lib/firebase/firestore/models'; // Import Firestore functions
-import type { Brand } from '@/lib/firebase/firestore/brands'; // Import Brand type
+import {
+    flexRender,
+    getCoreRowModel,
+    getPaginationRowModel,
+    getFilteredRowModel,
+    useReactTable,
+  } from '@tanstack/react-table';
+import type { Brand } from '@/lib/firebase/firestore/brands';
+import {
+  ColumnDef,
+} from "@tanstack/react-table" // Import Brand type
 
 // Zod schema for model form validation
 const modelSchema = z.object({
@@ -50,6 +59,10 @@ const modelSchema = z.object({
 });
 
 type ModelFormData = z.infer<typeof modelSchema>;
+
+import { DataTable } from "@/components/ui/data-table"
+import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
+
 
 export default function ModelsPage() {
   const [models, setModels] = React.useState<Model[]>([]);
@@ -194,6 +207,63 @@ export default function ModelsPage() {
     }
   };
 
+    const columns: ColumnDef<Model>[] = [
+      {
+        accessorKey: "name",
+        header: "Nombre Modelo",
+      },
+      {
+        accessorKey: "brandName",
+        header: "Marca",
+      },
+      {
+        id: "actions",
+        header: "Acciones",
+        cell: ({ row }) => {
+          const model = row.original;
+          return (
+            <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(model)} aria-label={`Editar ${model.name}`}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteClick(model.id, model.name, model.brandName)} aria-label={`Eliminar ${model.name}`}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          );
+        },
+      },
+    ];
+    const table = useReactTable<Model>({
+        data:models,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        filterFns: {
+          nameFilter: (row, columnId, value) => {
+            return value.length > 0 ? String(row.getValue(columnId)).toLowerCase().includes(value.toLowerCase()) : true
+          }
+        },
+        globalFilterFn: (row, id, filterValue) => {
+          if (!filterValue) {
+            return true;
+          }
+        
+          const modelName = String(row.getValue("name")).toLowerCase();
+          const brandName = String(row.getValue("brandName")).toLowerCase();
+          const filterString = filterValue.toLowerCase();
+        
+          return modelName.includes(filterString) || brandName.includes(filterString);
+        },
+
+        onGlobalFilterChange: (updaterOrValue) => {
+          const filterValue = typeof updaterOrValue === 'function' ? updaterOrValue('') : updaterOrValue;
+          table.setGlobalFilter(filterValue);
+        },
+
+        
+    
+      });
+
 
   return (
     <>
@@ -294,62 +364,18 @@ export default function ModelsPage() {
               <CardDescription>Lista de modelos de vehículos gestionados.</CardDescription>
             </CardHeader>
             <CardContent>
-               {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre Modelo</TableHead>
-                    <TableHead>Marca</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {isLoading ? (
-                     Array.from({ length: 4 }).map((_, index) => (
-                       <TableRow key={`skel-model-${index}`}>
-                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                         <TableCell className="text-right space-x-1">
-                           <Skeleton className="h-8 w-8 inline-block rounded"/>
-                           <Skeleton className="h-8 w-8 inline-block rounded"/>
-                         </TableCell>
-                       </TableRow>
-                     ))
-                   ) : models.length > 0 ? (
-                     models.map((model) => (
-                       <TableRow key={model.id} className={editingModel?.id === model.id ? 'bg-muted/50' : ''}>
-                         <TableCell className="font-medium">{model.name}</TableCell>
-                         <TableCell>{model.brandName}</TableCell>
-                         <TableCell className="text-right space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(model)} aria-label={`Editar ${model.name}`}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => handleDeleteClick(model.id, model.name, model.brandName)}
-                               aria-label={`Eliminar ${model.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                         </TableCell>
-                       </TableRow>
-                     ))
-                   ) : (
-                     <TableRow>
-                       <TableCell colSpan={3} className="h-24 text-center">
-                         No se encontraron modelos. Agrega uno usando el formulario.
-                       </TableCell>
-                     </TableRow>
-                   )}
-                </TableBody>
-              </Table>
+              {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
+              <div className='flex flex-col gap-4'>
+                {!isLoading && <DataTableViewOptions table={table} />}
+                 {isLoading ? <Skeleton className="h-[200px] w-full"/> : <DataTable columns={columns} data={models} table={table}/>}
+              </div>
+
+             
+               
             </CardContent>
-          </Card>
+          </Card>   
         </div>
       </div>
-
        {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -370,3 +396,17 @@ export default function ModelsPage() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

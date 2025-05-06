@@ -20,17 +20,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, PlusCircle, Trash2, XCircle } from 'lucide-react';
 import {
+    ColumnDef,
+    getCoreRowModel, getFilteredRowModel, getPaginationRowModel, useReactTable
+} from "@tanstack/react-table";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   // AlertDialogTrigger // Removed as it's not needed for manual control
 } from "@/components/ui/alert-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { fetchBrands, addBrand, deleteBrand, updateBrand, Brand } from '@/lib/firebase/firestore/brands';
+import { DataTableViewOptions } from "@/components/ui/data-table-view-options";
 
 // Zod schema for brand form validation remains the same
 const brandSchema = z.object({
@@ -47,6 +52,7 @@ export default function BrandsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [brandToDelete, setBrandToDelete] = React.useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
+  
 
   const form = useForm<BrandFormData>({
     resolver: zodResolver(brandSchema),
@@ -152,11 +158,43 @@ export default function BrandsPage() {
     }
   };
 
-  const handleEdit = (brand: Brand) => {
+    const handleEdit = (brand: Brand) => {
     setEditingBrand(brand);
     form.setValue('name', brand.name); // Populate form with brand name
   };
 
+    const columns: ColumnDef<Brand>[] = [
+        {
+          accessorKey: "name",
+          header: "Nombre Marca",
+        },
+        {
+          id: "actions",
+          header: "Acciones",
+          cell: ({ row }) => {
+            const brand = row.original;
+            return (
+              <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)} aria-label={`Editar ${brand.name}`}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteClick(brand.id, brand.name)} aria-label={`Eliminar ${brand.name}`}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            );
+          },
+        },
+      ];
+
+    const table = useReactTable<Brand>({
+        data:brands,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        globalFilterFn: (row, id, filterValue) => {
+            return filterValue.length > 0 ? String(row.getValue(id)).toLowerCase().includes(filterValue.toLowerCase()):true
+        },
+      });
 
   return (
     <>
@@ -222,82 +260,35 @@ export default function BrandsPage() {
         <div className="md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Marcas Existentes</CardTitle>
-              <CardDescription>Lista de marcas de vehículos gestionadas.</CardDescription>
-            </CardHeader>
+                <CardTitle>Marcas Existentes</CardTitle>
+                <CardDescription>Lista de marcas de vehículos gestionadas.</CardDescription>
+              </CardHeader>
             <CardContent>
-              {error && !isLoading && <p className="text-destructive mb-4">{error}</p>} {/* Show error only if not loading */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre de la Marca</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <TableRow key={`skel-brand-${index}`}>
-                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                        <TableCell className="text-right space-x-1"> {/* Add space for multiple icons */}
-                           <Skeleton className="h-8 w-8 inline-block rounded"/>
-                           <Skeleton className="h-8 w-8 inline-block rounded"/>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : brands.length > 0 ? (
-                    brands.map((brand) => (
-                      <TableRow key={brand.id} className={editingBrand?.id === brand.id ? 'bg-muted/50' : ''}>
-                        <TableCell className="font-medium">{brand.name}</TableCell>
-                        <TableCell className="text-right space-x-1"> {/* Space between buttons */}
-                           <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)} aria-label={`Editar ${brand.name}`}>
-                              <Edit className="h-4 w-4" />
-                           </Button>
-                           {/* Removed AlertDialogTrigger, Button now directly opens the dialog via state */}
-                           <Button
-                             variant="ghost"
-                             size="icon"
-                             className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
-                             onClick={() => handleDeleteClick(brand.id, brand.name)}
-                             aria-label={`Eliminar ${brand.name}`}
-                           >
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={2} className="h-24 text-center">
-                        No se encontraron marcas. Agrega una usando el formulario.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
+              {!isLoading && <DataTableViewOptions table={table} />}
+              {isLoading ? <Skeleton className="h-[200px] w-full" /> : <DataTable columns={columns} data={brands} table={table} />}
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Delete Confirmation Dialog - Controlled by state */}
+          {/* Delete Confirmation Dialog - Controlled by state */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Esto eliminará permanentemente la marca
-              <strong> "{brandToDelete?.name}"</strong>.
-               {/* Consider adding implications like deleting associated models */}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setBrandToDelete(null)}>Cancelar</AlertDialogCancel>
-            {/* Call confirmDelete when clicking Continue */}
-            <AlertDialogAction onClick={confirmDelete}>Continuar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                    <p>
+                        Esta acción no se puede deshacer. Esto eliminará permanentemente la marca
+                        <strong> "{brandToDelete?.name}"</strong>.
+                        {/* Consider adding implications like deleting associated models */}
+                    </p>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setBrandToDelete(null)}>Cancelar</AlertDialogCancel>
+                    {/* Call confirmDelete when clicking Continue */}
+                    <AlertDialogAction onClick={confirmDelete}>Continuar</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 }
