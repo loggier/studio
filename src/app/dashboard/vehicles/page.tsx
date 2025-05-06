@@ -265,59 +265,51 @@ export default function VehiclesPage() {
         onOpenChange={setIsDetailsDialogOpen}
       >
         {vehicleDetails && (
-          <DialogContent className="max-w-4xl sm:max-w-[625px]">
+          <DialogContent className="max-w-4xl" >
             <DialogHeader>
-              <DialogTitleAlt>Detalles del Vehículo</DialogTitleAlt>
-              <DialogDescription>
-                <span className="text-lg font-semibold">
-                  {vehicleDetails.brand} {vehicleDetails.model}
-                </span>
-              </DialogDescription>
+              <DialogTitleAlt>
+              {vehicleDetails.brand} {vehicleDetails.model} ({vehicleDetails.year})
+              </DialogTitleAlt>
+              <DialogDescription>{vehicleDetails.ubicacion}</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {vehicleDetails.imageUrls.slice(0, 5).map((url, i) => (
-                <div
-                  key={i}
-                  className="relative w-full h-40 sm:h-32 md:h-40 lg:h-48"
-                >
-                  <ImageViewer imageUrl={url}>
-                    {({ openImageViewer }) => (
-                      <Image
-                        src={url}
-                        alt={`Imagen ${i + 1}`}
-                        fill
-                        className="object-cover cursor-pointer rounded-md"
-                        onClick={openImageViewer}
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        unoptimized
-                      />
-                    )}
-                  </ImageViewer>
-                </div>
-              ))}
-            </div>
-            {vehicleDetails.imageUrls.length > 5 && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                +{vehicleDetails.imageUrls.length - 5} imágenes adicionales
+              <div className="flex flex-col gap-2">
+              <p>
+                <span className="font-semibold">Detalles</span>
               </p>
-            )}
+              <div className='grid grid-cols-1 gap-2'>
+                <p className='flex gap-2 items-center'>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-car-front"><path d="M21.3 17H20V9a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8H2.7c-.4 0-.7.2-.9.5-.2.3-.2.8 0 1.1l1.5 2.2c.3.4.8.6 1.3.6h13.7c.5 0 1-.2 1.3-.6l1.5-2.2c.2-.3.2-.8 0-1.1-.1-.3-.4-.5-.8-.5z"/><path d="M16 17v4"/><path d="M8 17v4"/><circle cx="16" cy="5" r="1"/><circle cx="8" cy="5" r="1"/></svg> Tipo: Auto
+                </p>
+                {vehicleDetails.corte && (
+                   <p><span className="font-semibold">Corte:</span> {vehicleDetails.corte}</p>
+                )}
+                {vehicleDetails.colors && (
+                  <p><span className="font-semibold">Colores:</span> {vehicleDetails.colors}</p>
+                )}
+                {vehicleDetails.observation && (
+                <p><span className="font-semibold">Observación:</span> {vehicleDetails.observation}</p>
+                )}
+
+              </div>
+            </div>          
+                <div className='grid grid-cols-1 gap-4 mt-4'>
+                  <p><span className='font-semibold'>Imágenes:</span></p>
+                  <div className="grid grid-cols-2 gap-4">
+                      {vehicleDetails.imageUrls.map((image, index) => (
+                        <ImageViewer key={index} imageUrl={image}>
+                          {({ openImageViewer }) => (
+                            <Image
+                              src={image}
+                              alt={`Imagen del vehículo ${index + 1}`}
+                              width={100}
+                              height={100}
+                              
+                              sizes="100vw" className="object-cover rounded-md hover:cursor-pointer" loading="lazy" />
+                          )}
+                        </ImageViewer>))}</div>
+                </div>             
+               
             <Separator className="my-4" />
-            <div className="grid grid-cols-2 gap-4">
-              <p>
-                <span className="font-semibold">Año:</span> {vehicleDetails.year}
-              </p>
-              <p>
-                <span className="font-semibold">Color(es):</span>{' '}
-                {vehicleDetails.colors}
-              </p>
-              <p>
-                <span className="font-semibold">Corte:</span> {vehicleDetails.corte}
-              </p>
-              <p>
-                <span className="font-semibold">Ubicación Corte:</span>{' '}
-                {vehicleDetails.ubicacion}
-              </p>
-            </div>
             <DialogFooter>
               <Button onClick={() => setIsDetailsDialogOpen(false)}>
                 Cerrar

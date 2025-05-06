@@ -10,16 +10,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
       { // Add pattern for vehicle image host
-        protocol: 'https',
-        hostname: '49.12.123.80', // Specific IP address from example
-        port: '453', // Specific port from example
+        protocol: 'http',
+        hostname: 'storage.rastreo2.com', // Specific IP address from example
+        port: '',
         pathname: '/uploads/**', // Allow any path under /uploads/
       },
     ],
