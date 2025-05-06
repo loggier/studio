@@ -34,8 +34,8 @@ import {
   // AlertDialogTrigger // Removed as it's not needed for manual control
 } from "@/components/ui/alert-dialog";
 import { DataTable } from "@/components/ui/data-table";
-import { fetchBrands, addBrand, deleteBrand, updateBrand, Brand } from '@/lib/firebase/firestore/brands';
-import { DataTableViewOptions } from "@/components/ui/data-table-view-options";
+import { fetchBrands, addBrand, deleteBrand, updateBrand, Brand } from '@/lib/firebase/firestore/brands'
+import { BrandModelTableViewOptions } from '@/components/ui/brand-model-table-view-options';
 
 // Zod schema for brand form validation remains the same
 const brandSchema = z.object({
@@ -265,7 +265,7 @@ export default function BrandsPage() {
               </CardHeader>
             <CardContent>
               {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
-              {!isLoading && <DataTableViewOptions table={table} />}
+              {!isLoading && <BrandModelTableViewOptions table={table} />}
               {isLoading ? <Skeleton className="h-[200px] w-full" /> : <DataTable columns={columns} data={brands} table={table} />}
             </CardContent>
           </Card>

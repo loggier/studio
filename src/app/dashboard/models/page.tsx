@@ -52,7 +52,6 @@ import {
   ColumnDef,
 } from "@tanstack/react-table" // Import Brand type
 
-// Zod schema for model form validation
 const modelSchema = z.object({
   name: z.string().min(1, { message: 'El nombre del modelo es obligatorio' }).max(50, { message: 'El nombre del modelo es demasiado largo' }),
   brandId: z.string({ required_error: 'Por favor selecciona una marca.' }).min(1, { message: 'La marca es obligatoria' }),
@@ -61,7 +60,7 @@ const modelSchema = z.object({
 type ModelFormData = z.infer<typeof modelSchema>;
 
 import { DataTable } from "@/components/ui/data-table"
-import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
+import { BrandModelTableViewOptions } from "@/components/ui/brand-model-table-view-options";
 
 
 export default function ModelsPage() {
@@ -238,15 +237,10 @@ export default function ModelsPage() {
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        filterFns: {
-          nameFilter: (row, columnId, value) => {
-            return value.length > 0 ? String(row.getValue(columnId)).toLowerCase().includes(value.toLowerCase()) : true
-          }
-        },
         globalFilterFn: (row, id, filterValue) => {
           if (!filterValue) {
             return true;
-          }
+          } 
         
           const modelName = String(row.getValue("name")).toLowerCase();
           const brandName = String(row.getValue("brandName")).toLowerCase();
@@ -258,7 +252,7 @@ export default function ModelsPage() {
         onGlobalFilterChange: (updaterOrValue) => {
           const filterValue = typeof updaterOrValue === 'function' ? updaterOrValue('') : updaterOrValue;
           table.setGlobalFilter(filterValue);
-        },
+        },        
 
         
     
@@ -366,7 +360,7 @@ export default function ModelsPage() {
             <CardContent>
               {error && !isLoading && <p className="text-destructive mb-4">{error}</p>}
               <div className='flex flex-col gap-4'>
-                {!isLoading && <DataTableViewOptions table={table} />}
+                {!isLoading && <BrandModelTableViewOptions table={table} />}
                  {isLoading ? <Skeleton className="h-[200px] w-full"/> : <DataTable columns={columns} data={models} table={table}/>}
               </div>
 
