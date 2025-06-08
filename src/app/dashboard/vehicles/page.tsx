@@ -147,6 +147,7 @@ export default function VehiclesPage() {
     { accessorKey: 'year', header: 'Año' },
     { accessorKey: 'colors', header: 'Color(es)' },
     { accessorKey: 'corte', header: 'Corte Corriente' },
+    { accessorKey: 'userEmail', header: 'Creado por', cell: ({ row }) => row.original.userEmail || '-' },
     { accessorKey: 'ubicacion', header: 'Ubicación Corte' },
     {
       accessorKey: 'observation',

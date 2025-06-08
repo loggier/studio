@@ -29,7 +29,8 @@ export interface Vehicle {
   imageUrls?: string[]; // Optional array of strings
   observation?: string; // Optional field
   ubicacion?: string; // Optional field
-  modelId: string
+  modelId: string;
+  userEmail?: string;
 }
 
 // Define the structure for adding a new vehicle (Not used based on requirements, but good practice)
@@ -99,6 +100,7 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
         corte: typeof data.corte === 'string' ? data.corte : undefined, // Use undefined for optional missing fields
         imageUrls: imageUrls, // Use validated array
         observation: typeof data.observation === 'string' ? data.observation : undefined,
+        userEmail: typeof data.userEmail === 'string' ? data.userEmail : undefined,
         ubicacion: typeof data.ubicacion === 'string' ? data.ubicacion : undefined,
         modelId: typeof data.modelId === 'string' ? data.modelId : '',
       } satisfies Vehicle; // Use 'satisfies' for type checking without casting
