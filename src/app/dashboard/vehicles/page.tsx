@@ -148,6 +148,13 @@ export default function VehiclesPage() {
     { accessorKey: 'colors', header: 'Color(es)' },
     { accessorKey: 'corte', header: 'Corte Corriente' },
     { accessorKey: 'userEmail', header: 'Creado por', cell: ({ row }) => row.original.userEmail || '-' },
+    {
+      accessorKey: 'imageUrls',
+ header: 'Con Imagen',
+ cell: ({ row }) => {
+ return row.original.imageUrls && row.original.imageUrls.length > 0 ? 'SI' : 'NO';
+      },
+    },
     { accessorKey: 'ubicacion', header: 'Ubicación Corte' },
     {
       accessorKey: 'observation',
