@@ -208,8 +208,11 @@ export default function VehiclesPage() {
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: (row, _id, filter) => {
       const search = String(filter).toLowerCase();
-      return [row.getValue('brand'), row.getValue('model')]
-        .some((v) => String(v).toLowerCase().includes(search));
+      const brandMatch = String(row.getValue('brand')).toLowerCase().includes(search);
+      const modelMatch = String(row.getValue('model')).toLowerCase().includes(search);
+      const userEmailMatch = row.original.userEmail ? String(row.original.userEmail).toLowerCase().includes(search) : false;
+
+ return brandMatch || modelMatch || userEmailMatch;
     },
   });
 
